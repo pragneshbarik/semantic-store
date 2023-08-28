@@ -1,26 +1,28 @@
-import os
-import fnmatch
+import glob
 
 # Tasks
 # 1. Install Anaconda, Pytorch,
-# 2. Make a function to list all the images in directory
+# 2. Make a function to list all the images in directory recursively
 
-def list_images(path):
-    # This function lists only image files in a directory
-    # List all files in the directory
-    all_files = os.listdir(path)
-    
-    # Filter out only image files (JPEG, PNG, GIF, etc.)
-    image_files = [f for f in all_files if fnmatch.fnmatch(f, '*.jpg') or fnmatch.fnmatch(f, '*.jpeg') or fnmatch.fnmatch(f, '*.png') or fnmatch.fnmatch(f, '*.gif') or fnmatch.fnmatch(f, '*.svg') or fnmatch.fnmatch(f, '*.webp') or fnmatch.fnmatch(f, '*.apng') or fnmatch.fnmatch(f, '*.avif') or fnmatch.fnmatch(f, '*.jfif') or fnmatch.fnmatch(f, '*.pjpeg')or fnmatch.fnmatch(f, '*.pjp')]
-    
-    return image_files
+def list_images():
+    '''
+    This function lists only image files in a directory
+    Filters out only image files (JPEG, PNG, GIF, etc.)
+    '''
+
+    extensions = ["png","jpeg","jpg","svg","gif","pjp","avif","apng","webp","jfif","pjpeg"]
+    images_files = []
+    for e in extensions:
+        f = glob.glob(f"**/*.{e}",recursive=True)
+        if f:images_files.append(f)
+    return images_files
 
 # Test the function
-#get the current working directory
-directory_path = str(os.getcwd())
+#call the list_image function to search for images in cwd and subdirectories
+images_list = list_images()
 
-#call the list_image function to search for images in cwd
-images_list = list_images(directory_path)
-
-#display the found images in a list
-print(images_list)
+#display the found images
+#additional conversion to str for better viewing experience
+for image in images_list:
+    img = str(image)[1:-1]
+    print(img)
