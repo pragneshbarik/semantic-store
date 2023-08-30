@@ -87,19 +87,6 @@ class TextPipeline(Pipeline):
 
         return last_index, last_index + len(sentances)
 
-
-
-
-        
-
-
-
-
-
-
-        
-
-
 class ImagePipeline(Pipeline):
     pass
 
@@ -118,6 +105,17 @@ def list_images():
     Filters out only image files (JPEG, PNG, GIF, etc.)
     '''
 
+=======
+
+# Tasks
+# 1. Install Anaconda, Pytorch,
+# 2. Make a function to list all the images in directory recursively
+
+def list_images():
+    '''
+    This function lists only image files in a directory
+    Filters out only image files (JPEG, PNG, GIF, etc.)
+    '''
     extensions = ["png","jpeg","jpg","svg","gif","pjp","avif","apng","webp","jfif","pjpeg"]
     images_files = []
     for e in extensions:
