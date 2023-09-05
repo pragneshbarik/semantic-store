@@ -1,28 +1,9 @@
 import sqlite3
-import TextPipeline
-import ImagePipeline
-import AudioPipeline
+from TextPipeline import TextPipeline
+from ImagePipeline import ImagePipeline
+from AudioPipeline import AudioPipeline
 from StoreObjects import *
 from collections import defaultdict
-
-
-
-# Multimodal searchs
-# Allowed searchs
-# str -> str    ~ done
-# str -> image  ~ done
-# str -> audio  ~ done
-# str -> video  ~ done
-# image -> image
-
-
-# Left to implement
-# image -> str
-# image -> audio
-# image -> video
-
-# 
-
 
 
 class Store:
@@ -53,16 +34,17 @@ class Store:
         self.__is_connected = True
 
         self.db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS master_file_record (
-                uuid TEXT PRIMARY KEY,
-                file_path TEXT
-                file_type TEXT
-                faiss_start_indices TEXT
-                faiss_end_indices TEXT
-            )
-            '''
+        '''
+        CREATE TABLE IF NOT EXISTS master_file_record (
+            uuid TEXT PRIMARY KEY,
+            file_path TEXT,
+            file_type TEXT,
+            faiss_start_index TEXT,
+            faiss_end_index TEXT
         )
+        '''
+)
+
 
         self.commit()
 
@@ -70,25 +52,29 @@ class Store:
     def multimodal_search(self, path: str, k: int, left: str, right: str) :
         pass
     
-    def search(self, q: str, k: int) :
-        s = StoreObject
 
-        images, distances = self.image_pipeline.similarity_search(q, k)
-        
-        for image, dist in zip(images, distances) :
-            image_object = ImageObject(image[1], image[2], dist)
-            s.images.append(image_object)
+    def text_to_image_search(self, q:str, k: int) :
+        if(len(TextPipeline.split_text(q))<50) :
+            images, distances = self.image_pipeline.similarity_search(q, k)
+            image_objects = []
+            for image, dist in zip(images, distances):
+                image_object = ImageObject(image[1], image[2], dist)
+                image_objects.append(image_object)
 
+        return image_objects
+    
+    def text_to_text_search(self, q: str, k:int) :
         temp_texts, distances = self.text_pipeline.similarity_search(q, k)
-        
+                
         texts = []
         for text, d in zip(temp_texts, list(distances[0])) :
             texts.append(list(text) + [d])
         
-        
         texts_dict = defaultdict(list)
         for text in texts :
             texts_dict[text[1]].append(text)
+
+        text_objects = []
 
         for uuid in texts_dict :
             text_object = TextObject(uuid, texts_dict[uuid][0][2], [], [])
@@ -96,12 +82,46 @@ class Store:
                 text_object.chunks.append(text[3])
                 text_object.distances.append(text[4])
             
-            s.texts.append(text_object)
+            text_objects.append(text_object)
+        
+        return text_objects
+            
+
+    def text_to_audio_search(self, q: str, k: int) :
+        pass
+
+    def image_to_image_search(self, path: str, k:int) :
+        pass
+
+    def audio_to_text_search(self, path: str, k:int) :
+        pass
+
+    def audio_to_image_search(self, path: str, k: int):
+        pass
+
+    def audio_to_audio_search(self, path: str, k: int) :
+        pass
+
+    
+    def search(self, q: str, k: int) :
+        s = StoreObject()
+
+        # only allow text to image search if tokens are less than 50
+        # image_objects = self.text_to_image_search(q, k)
+        # s.images = image_objects
+
+
+        text_objects = self.text_to_text_search(q, k)
+        s.texts = text_objects
+        
+        return s;
+        
+
 
     
 
 
-    def determine_modality(self, path: str):
+    def __determine_modality(self, path: str):
         # Implement a function to determine the modality based on the path
         # For example, you can check the file extension to determine the modality
         file_extension = path.split(".")[-1].lower()
@@ -120,7 +140,7 @@ class Store:
             return
 
        
-        modality = self.determine_modality(path)
+        modality = self.__determine_modality(path)
 
         if modality not in self.pipelines:
             print("Unsupported modality.")
@@ -129,18 +149,19 @@ class Store:
         pipeline = self.pipelines[modality]
 
         # Perform the insertion based on the determined modality
-        if modality == "image":
+        if modality == "text":
             # Insert image data into the image pipeline
+            file_id, first_index, last_index = pipeline.insert_file(path)
+            self.db.execute(
+                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
+                 (file_id, path, "text", first_index, last_index)               
+            )
+        elif modality == "image":
             file_id, first_index = pipeline.insert_file(path)
             self.db.execute(
-                '''
-
-'''                
+                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
+                (file_id, path, "image", first_index, first_index)
             )
-        elif modality == "text":
-            # Insert text data into the text pipeline
-            # You need to define how to process and insert text data into your pipeline
-            pass
         elif modality == "audio":
             # Insert audio data into the audio pipeline
             # You need to define how to process and insert audio data into your pipeline
@@ -165,13 +186,22 @@ class Store:
 
 
 
-# text_pipeline = TextPipeline(faiss_uri='text.faiss', sqlite_uri='semantic.db')
-image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='semantic.db')
 
-# image_pipeline.insert_file('cat.jpg')
-# image_pipeline.insert_file('dog.jpeg')
-# image_pipeline.insert_file('sky.jpeg')
-print(image_pipeline.similarity_search("a black dog", 3))
+s = Store()
+s.connect('some1.db')
+s.insert('RAS_03_375.pdf')
+s.commit()
+res = s.search("hexapod gait robobot", 5)
+for text in res.texts :
+    print(text)
+
+
+# image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='semantic.db')
+
+# # image_pipeline.insert_file('cat.jpg')
+# # image_pipeline.insert_file('dog.jpeg')
+# # image_pipeline.insert_file('sky.jpeg')
+# print(image_pipeline.similarity_search("a black dog", 3))
 # print(text_pipeline.ntotal)
 # tick = time.time()
 # embeds = text_pipeline.encode_text(["There are 7 wonders in the world", "I have a ball, and will play with dog", "a great pizza"])

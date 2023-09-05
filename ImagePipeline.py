@@ -99,7 +99,7 @@ class ImagePipeline :
 
 
 
-            return Pipeline.order_by(self.db.execute(Q).fetchmany(k), I[0]), D
+            return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]), D
 
         else:
             file_ext = q.split('.')[-1]

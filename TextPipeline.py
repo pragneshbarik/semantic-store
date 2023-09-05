@@ -26,7 +26,8 @@ class TextPipeline(Pipeline):
         self.db.execute('''
             CREATE TABLE IF NOT EXISTS qa_text_table (
                 faiss_id INTEGER PRIMARY KEY,
-                document_id TEXT,
+                file_id TEXT,
+                file_path TEXT,
                 text_data TEXT
             )
         ''')
@@ -65,21 +66,45 @@ class TextPipeline(Pipeline):
 
 
     @staticmethod
-    def split_text(text: str, max_words: int = 256) -> list[str]:
-        words = text.split()
+    def split_text(text, chunk_size=256):
+        """
+        Split text into chunks of a specific word count.
+
+        Args:
+            text (str): The input text to split.
+            chunk_size (int): The desired word count for each chunk (default is 256).
+
+        Returns:
+            List[str]: A list of text chunks.
+        """
+        # Split the text into words
+        words = re.findall(r'\b\w+\b', text)
+
+        # Initialize variables
         chunks = []
-        chunk = ""
+        current_chunk = []
+        word_count = 0
+
+        # Iterate through words and create chunks
         for word in words:
-            if len(chunk.split()) + len(word.split()) <= max_words:
-                chunk += word + " "
-            else:
-                chunks.append(chunk.strip())
-                chunk = word + " "
-        
-        if chunk:
-            chunks.append(chunk.strip())
-        
+            current_chunk.append(word)
+            word_count += 1
+
+            if word_count >= chunk_size:
+                # Join the words to create a chunk and reset variables
+                chunk = ' '.join(current_chunk)
+                chunks.append(chunk)
+                current_chunk = []
+                word_count = 0
+
+        # Add any remaining words as the last chunk
+        if current_chunk:
+            chunk = ' '.join(current_chunk)
+            chunks.append(chunk)
+
         return chunks
+
+
 
     @staticmethod
     def extract_text(path: str) -> str :
@@ -105,6 +130,7 @@ class TextPipeline(Pipeline):
 
         text = self.extract_text(path)
         sentences = self.split_text(text, 77)
+        
         tokens = clip.tokenize(sentences).to(self.device)
 
         text_features = self.model.encode_text(tokens)
@@ -126,7 +152,7 @@ class TextPipeline(Pipeline):
         
         return first_index, last_index
     
-    def insert_into_qa(self, path: str, document_id: str) -> [int, int]:
+    def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
         text = self.extract_text(path)
         sentences = self.split_text(text, self.chunk_size)
         embeddings = self.encode_text(sentences)
@@ -136,22 +162,22 @@ class TextPipeline(Pipeline):
 
         for i, sentence in enumerate(sentences) :
             self.db.execute(
-                "INSERT INTO qa_text_table (faiss_id, file_id, path, text_data) VALUES (?, ?, ?, ?)",
-                (first_index + i, document_id, sentence)
+                "INSERT INTO qa_text_table (faiss_id, file_id, file_path, text_data) VALUES (?, ?, ?, ?)",
+                (first_index + i, file_id, path, sentence)
             )
         
         return first_index, last_index
 
-    def insert_text(self, path: str) :
+    def insert_file(self, path: str) :
         # text = self.extract_text(path)
-        document_id = str(uuid.uuid4())
+        file_id = str(uuid.uuid4())
         indices = {}
-        indices['clip'] = self.insert_into_clip(path, document_id)
-        indices['qa'] = self.insert_into_qa(path, document_id)
+        # indices['clip'] = self.insert_into_clip(path, document_id)
+        first_index, last_index = self.insert_into_qa(path, file_id)
 
         self.commit()
 
-        return document_id, indices
+        return file_id, first_index, last_index
         
         
     def similarity_search(self, query: str, k: int) -> list[int]:
@@ -166,7 +192,7 @@ class TextPipeline(Pipeline):
 
         faiss_indices = list(I[0])
 
-        Q = f"SELECT * FROM text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
+        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
 
         return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]) , D
     
@@ -196,7 +222,7 @@ class TextPipeline(Pipeline):
 
         faiss_indices = list(I[0])
 
-        Q = f"SELECT * FROM text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
+        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
 
         return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]) , D
     
