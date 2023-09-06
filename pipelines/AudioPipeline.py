@@ -1,6 +1,6 @@
 
-from BasePipeline import Pipeline
-import TextPipeline
+from pipelines.BasePipeline import Pipeline
+import pipelines.TextPipeline as TextPipeline
 import whisper
 import re
 import torch

@@ -1,7 +1,7 @@
 import sqlite3
-from TextPipeline import TextPipeline
-from ImagePipeline import ImagePipeline
-from AudioPipeline import AudioPipeline
+from pipelines.TextPipeline import TextPipeline
+from pipelines.ImagePipeline import ImagePipeline
+from pipelines.AudioPipeline import AudioPipeline
 from StoreObjects import *
 from collections import defaultdict
 
@@ -54,8 +54,11 @@ class Store:
     
 
     def text_to_image_search(self, q:str, k: int) :
+
         if(len(TextPipeline.split_text(q))<50) :
             images, distances = self.image_pipeline.similarity_search(q, k)
+
+            # [-1, -1, -1, -1, -1]
             image_objects = []
             for image, dist in zip(images, distances):
                 image_object = ImageObject(image[1], image[2], dist)
@@ -107,7 +110,7 @@ class Store:
         s = StoreObject()
 
         # only allow text to image search if tokens are less than 50
-        # image_objects = self.text_to_image_search(q, k)
+        image_objects = self.text_to_image_search(q, k)
         # s.images = image_objects
 
 
@@ -147,6 +150,7 @@ class Store:
             return
 
         pipeline = self.pipelines[modality]
+        res = ""
 
         # Perform the insertion based on the determined modality
         if modality == "text":
@@ -156,21 +160,34 @@ class Store:
                 "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
                  (file_id, path, "text", first_index, last_index)               
             )
+            res = file_id
+            
         elif modality == "image":
             file_id, first_index = pipeline.insert_file(path)
             self.db.execute(
                 "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
                 (file_id, path, "image", first_index, first_index)
             )
+            res = file_id
+
+            
         elif modality == "audio":
-            # Insert audio data into the audio pipeline
-            # You need to define how to process and insert audio data into your pipeline
-            pass
+            file_id, first_index, last_index = pipeline.insert_file(path)
+
+            self.db.execute(
+                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
+                (file_id, path, "audio", first_index, last_index)
+            )
+            res = file_id
+
+            
         else:
-            print("Unsupported modality.")
+            raise FileNotFoundError(path)
+            # print("Unsupported modality.")
 
         # Commit changes to the database
         self.commit()
+        return res;
 
 
 
@@ -186,47 +203,12 @@ class Store:
 
 
 
+# import Store from SemanticStore
 
 s = Store()
-s.connect('some1.db')
-s.insert('RAS_03_375.pdf')
+s.connect('some2.db')
+# s.insert('RAS_03_375.pdf')
 s.commit()
 res = s.search("hexapod gait robobot", 5)
-for text in res.texts :
-    print(text)
 
-
-# image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='semantic.db')
-
-# # image_pipeline.insert_file('cat.jpg')
-# # image_pipeline.insert_file('dog.jpeg')
-# # image_pipeline.insert_file('sky.jpeg')
-# print(image_pipeline.similarity_search("a black dog", 3))
-# print(text_pipeline.ntotal)
-# tick = time.time()
-# embeds = text_pipeline.encode_text(["There are 7 wonders in the world", "I have a ball, and will play with dog", "a great pizza"])
-# tock = time.time()
-# print(shape, tock - tick)
-
-# def list_images():
-#     '''
-#     This function lists only image files in a directory
-#     Filters out only image files (JPEG, PNG, GIF, etc.)
-#     '''
-#     extensions = ["png","jpeg","jpg","svg","gif","pjp","avif","apng","webp","jfif","pjpeg"]
-#     images_files = []
-#     for e in extensions:
-#         f = glob.glob(f"**/*.{e}",recursive=True)
-#         if f:images_files.append(f)
-#     return images_files
-
-# # Test the function
-# #call the list_image function to search for images in cwd and subdirectories
-# images_list = list_images()
-
-# #display the found images
-# #additional conversion to str for better viewing experience
-# for image in images_list:
-#     img = str(image)[1:-1]
-#     print(img)
-
+print(res)

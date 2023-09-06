@@ -1,6 +1,6 @@
 
 import re
-from BasePipeline import Pipeline
+from pipelines.BasePipeline import Pipeline
 import torch
 import numpy as np
 import sqlite3
@@ -11,6 +11,13 @@ import clip
 import uuid
 from PyPDF2 import PdfReader
 from PIL import Image
+
+import nltk
+import re
+from nltk.corpus import stopwords
+
+nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
+nltk.download('stopwords')  # Ensure that stop words are downloaded
 
 
 class TextPipeline(Pipeline):
@@ -64,61 +71,7 @@ class TextPipeline(Pipeline):
         faiss.write_index(self.qa_index, self.qa_faiss_uri)
         faiss.write_index(self.clip_index, self.clip_faiss_uri)
 
-
-    @staticmethod
-    def split_text(text, chunk_size=256):
-        """
-        Split text into chunks of a specific word count.
-
-        Args:
-            text (str): The input text to split.
-            chunk_size (int): The desired word count for each chunk (default is 256).
-
-        Returns:
-            List[str]: A list of text chunks.
-        """
-        # Split the text into words
-        words = re.findall(r'\b\w+\b', text)
-
-        # Initialize variables
-        chunks = []
-        current_chunk = []
-        word_count = 0
-
-        # Iterate through words and create chunks
-        for word in words:
-            current_chunk.append(word)
-            word_count += 1
-
-            if word_count >= chunk_size:
-                # Join the words to create a chunk and reset variables
-                chunk = ' '.join(current_chunk)
-                chunks.append(chunk)
-                current_chunk = []
-                word_count = 0
-
-        # Add any remaining words as the last chunk
-        if current_chunk:
-            chunk = ' '.join(current_chunk)
-            chunks.append(chunk)
-
-        return chunks
-
-
-
-    @staticmethod
-    def extract_text(path: str) -> str :
-        text=""
-        pdf_reader = PdfReader(path)
-
-        for page in pdf_reader.pages :
-            text+= page.extract_text()
-
-        cleaned_text = re.sub(r'[^\w\s]', ' ', text)
-        cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
-
-        cleaned_text = cleaned_text.lower()
-        return cleaned_text
+        
 
     def encode_text(self, sentences: list[str]) -> list[torch.Tensor] | np.ndarray | torch.Tensor:
         embeddings = self.qa_model.encode(sentences)

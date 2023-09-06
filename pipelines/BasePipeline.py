@@ -9,6 +9,9 @@ class Pipeline(ABC):
     @abstractmethod
     def commit(self) -> int :
         pass
+    
+    
+
 
     # @abstractmethod
     # def similarity_search(self, query: str, k: int) -> list[int] :

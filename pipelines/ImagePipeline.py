@@ -4,9 +4,8 @@ import re
 import torch
 import numpy as np
 import time
-from abc import ABC, abstractmethod
 import sqlite3
-from BasePipeline import Pipeline
+from pipelines.BasePipeline import Pipeline
 
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -92,14 +91,22 @@ class ImagePipeline :
 
             D, I = self.index.search(text_np, k)
 
-            faiss_indices = list(I[0])
+            # find first occurence of -1
+
+            arg_minus_one = np.where(I[0] == -1)[0]
+            I = I[0][:arg_minus_one]
+            D = D[0][:arg_minus_one]
+
+
+
+            faiss_indices = list(I)
             print(D, I)
 
             Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
 
 
 
-            return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]), D
+            return Pipeline.order_by(self.db.execute(Q).fetchall(), I), D
 
         else:
             file_ext = q.split('.')[-1]
@@ -109,9 +116,15 @@ class ImagePipeline :
                 embeddings = self.model.encode_image(image)
                 
                 D, I = self.index.search(embeddings, k)
-                faiss_indices = list(I[0])
+
+                arg_minus_one = np.where(I[0] == -1)[0]
+                I = I[0][:arg_minus_one]
+                D = D[0][:arg_minus_one]
+
+                faiss_indices = list(I)
+
 
                 Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
                 
 
-                return Pipeline.order_by(self.db.execute(Q).fetchall(),I[0]), D
+                return Pipeline.order_by(self.db.execute(Q).fetchall(),I), D
