@@ -55,14 +55,11 @@ class AudioPipeline(Pipeline):
         embeddings = self.model.encode(sentences)
         return np.array(embeddings).reshape(-1, 384)
 
-  
-
-    def insert_file(self, path: str) -> tuple :
+    def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
         extracted_text = self.whisper_model.transribe(path)
         extracted_text = extracted_text['text']
 
         sentences = TextPipeline.split_text(extracted_text)
-        file_id = str(uuid.uuid4())
         embeddings = self.encode_text(sentences)
         first_index = self.index.ntotal
         self.index.add(embeddings)
@@ -74,6 +71,12 @@ class AudioPipeline(Pipeline):
                 (first_index + i, file_id, path, sentence)
             )
 
+        return first_index, last_index
+    
+
+    def insert_file(self, path: str) -> tuple :
+        file_id = str(uuid.uuid4())
+        first_index, last_index = self.insert_into_qa(path, file_id)
         self.commit()
         return file_id, first_index, last_index
     
