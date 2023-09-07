@@ -9,15 +9,12 @@ import faiss
 import torch
 import clip
 import uuid
-from PyPDF2 import PdfReader
+from utils import *
 from PIL import Image
 
-import nltk
 import re
-from nltk.corpus import stopwords
 
-nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
-nltk.download('stopwords')  # Ensure that stop words are downloaded
+
 
 
 class TextPipeline(Pipeline):
@@ -81,8 +78,8 @@ class TextPipeline(Pipeline):
     def insert_into_clip(self, path: str, document_id: str) -> [int, int]:
         file_ext = path.split('.')[-1]
 
-        text = self.extract_text(path)
-        sentences = self.split_text(text, 77)
+        text = extract_text(path)
+        sentences = split_text(text, 77)
         
         tokens = clip.tokenize(sentences).to(self.device)
 
@@ -106,8 +103,8 @@ class TextPipeline(Pipeline):
         return first_index, last_index
     
     def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
-        text = self.extract_text(path)
-        sentences = self.split_text(text, self.chunk_size)
+        text = extract_text(path)
+        sentences = split_text(text, self.chunk_size)
         embeddings = self.encode_text(sentences)
         first_index = self.qa_index.ntotal
         self.qa_index.add(embeddings)
@@ -131,7 +128,20 @@ class TextPipeline(Pipeline):
         self.commit()
 
         return file_id, first_index, last_index
-        
+    
+    def insert_text(self, text: str) :
+        document_id = str(uuid.uuid4())
+        sentences = split_text(text, self.chunk_size)
+        embeddings = self.encode_text(sentences)
+        first_index = self.qa_index.ntotal
+        self.qa_index.add(embeddings)
+        last_index = self.qa_index.ntotal
+
+        for i, sentence in enumerate(sentences) :
+            self.db.execute(
+                "INSERT INTO qa_text_table (faiss_id, file_id, file_path, text_data) VALUES (?, ?, ?, ?)",
+                (first_index + i, document_id, "source_text", sentence)
+            )
         
     def similarity_search(self, query: str, k: int) -> list[int]:
         '''
@@ -141,15 +151,15 @@ class TextPipeline(Pipeline):
         
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
+        D, I = remove_neg_indexes(D, I)
 
-
-        faiss_indices = list(I[0])
-
-        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
-
-        return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]) , D
+        if(len(I) > 0) :
+            Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
+            return order_by(self.db.execute(Q).fetchall(), I) , D
+        else:
+            return [], []
     
-    def search_via_image(self, path: str, k:int) :
+    def image_to_text_search(self, path: str, k:int) :
         query_embedding = {}
 
         with torch.no_grad() :
@@ -162,21 +172,25 @@ class TextPipeline(Pipeline):
         faiss.normalize_L2(embed_vector)
 
         D, I = self.clip_index.search(embed_vector, k)
-        faiss_indices = list(I[0])
+        D, I = remove_neg_indexes(D, I)
 
-        Q = f"SELECT * FROM clip_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
-
-        return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]) , D
+        if(len(I) > 0) :
+            Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
+            return order_by(self.db.execute(Q).fetchall(), I) , D
+        else:
+            return [], []
     
 
-    def search_via_text(self, query: str, k: int):
+    def text_to_text_search(self, query: str, k: int):
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
 
-        faiss_indices = list(I[0])
+        D, I = remove_neg_indexes(D, I)
 
-        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
+        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
 
-        return Pipeline.order_by(self.db.execute(Q).fetchall(), I[0]) , D
+        return order_by(self.db.execute(Q).fetchall(), I) , D
+
+
     
     

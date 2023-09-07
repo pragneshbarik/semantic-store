@@ -28,3 +28,11 @@ class StoreObject:
     images: List[ImageObject] = field(default_factory=list)
     texts: List[TextObject] = field(default_factory=list)
     audios: List[AudioObject] = field(default_factory=list)
+
+
+@dataclass
+class FileObject:
+    uuid: str
+    file_path: str
+    file_type : str
+    

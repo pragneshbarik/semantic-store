@@ -1,9 +1,12 @@
+import os
+import requests
 import sqlite3
+from utils import * 
+from StoreObjects import *
+from collections import defaultdict
 from pipelines.TextPipeline import TextPipeline
 from pipelines.ImagePipeline import ImagePipeline
 from pipelines.AudioPipeline import AudioPipeline
-from StoreObjects import *
-from collections import defaultdict
 
 
 class Store:
@@ -55,10 +58,9 @@ class Store:
 
     def text_to_image_search(self, q:str, k: int) :
 
-        if(len(TextPipeline.split_text(q))<50) :
+        if(len(split_text(q))<50) :
             images, distances = self.image_pipeline.similarity_search(q, k)
 
-            # [-1, -1, -1, -1, -1]
             image_objects = []
             for image, dist in zip(images, distances):
                 image_object = ImageObject(image[1], image[2], dist)
@@ -70,7 +72,7 @@ class Store:
         temp_texts, distances = self.text_pipeline.similarity_search(q, k)
                 
         texts = []
-        for text, d in zip(temp_texts, list(distances[0])) :
+        for text, d in zip(temp_texts, list(distances)) :
             texts.append(list(text) + [d])
         
         texts_dict = defaultdict(list)
@@ -91,13 +93,37 @@ class Store:
             
 
     def text_to_audio_search(self, q: str, k: int) :
-        pass
+        temp_audios, distances = self.audio_pipeline.similarity_search(q, k)
+                
+        audios = []
+        for audio, d in zip(temp_audios, list(distances)) :
+            audios.append(list(audio) + [d])
+        
+        audio_dict = defaultdict(list)
+
+        for audio in audios :
+            audio_dict[audio[1]].append(audio)
+
+
+        audio_objects = []
+
+        for uuid in audio_dict :
+            audio_object = AudioObject(uuid, audio_dict[uuid][0][2], [], [])
+            for audio in audio_dict[uuid] :
+                audio_object.chunks.append(audio[3])
+                audio_object.distances.append(audio[4])
+            
+            audio_objects.append(audio_object)
+        
+        return audio_objects
 
     def image_to_image_search(self, path: str, k:int) :
         pass
 
     def audio_to_text_search(self, path: str, k:int) :
         pass
+
+
 
     def audio_to_image_search(self, path: str, k: int):
         pass
@@ -106,27 +132,26 @@ class Store:
         pass
 
     
-    def search(self, q: str, k: int) :
+    def search(self, q: str, k: int, modals=['text']) :
+
         s = StoreObject()
 
-        # only allow text to image search if tokens are less than 50
-        image_objects = self.text_to_image_search(q, k)
-        # s.images = image_objects
+        if 'image' in modals :
+            image_objects = self.text_to_image_search(q, k)
+            s.images = image_objects
+        
+        if 'text' in modals :
+            text_objects = self.text_to_text_search(q, k)
+            s.texts = text_objects
 
-
-        text_objects = self.text_to_text_search(q, k)
-        s.texts = text_objects
+        if 'audio' in modals :
+            pass
+            
         
         return s;
         
 
-
-    
-
-
     def __determine_modality(self, path: str):
-        # Implement a function to determine the modality based on the path
-        # For example, you can check the file extension to determine the modality
         file_extension = path.split(".")[-1].lower()
         if file_extension in ["jpg", "jpeg", "png"]:
             return "image"
@@ -152,7 +177,7 @@ class Store:
         pipeline = self.pipelines[modality]
         res = ""
 
-        # Perform the insertion based on the determined modality
+
         if modality == "text":
             # Insert image data into the image pipeline
             file_id, first_index, last_index = pipeline.insert_file(path)
@@ -183,11 +208,40 @@ class Store:
             
         else:
             raise FileNotFoundError(path)
-            # print("Unsupported modality.")
-
-        # Commit changes to the database
         self.commit()
         return res;
+
+    def insert_remote(self, uri: str):
+        try:
+            response = requests.get(uri)
+            if response.status_code == 200:
+                # Create a temporary file to store the remote content
+                temp_filename = "temp_file"  # You can generate a unique filename here
+                with open(temp_filename, "wb") as temp_file:
+                    temp_file.write(response.content)
+
+                # Insert the temporary file based on its modality
+                inserted_file_id = self.insert(temp_filename)
+
+                # Remove the temporary file
+                os.remove(temp_filename)
+
+                return inserted_file_id
+            else:
+                print("Failed to fetch remote file. Status code:", response.status_code)
+                return None
+        except Exception as e:
+            print("Error inserting remote file:", str(e))
+            return None
+    
+    def get(self, uuid: str) :
+        q = f"SELECT * FROM master_file_record WHERE uuid = '{uuid}'"
+        res = self.db.execute(q).fetchone()
+        f = FileObject(res[0], res[1], res[2])
+        return f;
+
+    def delete(self, uuid: str) :
+        pass    
 
 
 
@@ -207,8 +261,8 @@ class Store:
 
 s = Store()
 s.connect('some2.db')
-# s.insert('RAS_03_375.pdf')
+s.insert('gita.txt')
 s.commit()
-res = s.search("hexapod gait robobot", 5)
+res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
 print(res)

@@ -1,12 +1,8 @@
-import glob
-import whisper
-import re
+
 import torch
 import numpy as np
-import time
 import sqlite3
 from pipelines.BasePipeline import Pipeline
-
 from sentence_transformers import SentenceTransformer
 import faiss
 import os
@@ -14,8 +10,7 @@ import torch
 import clip
 from PIL import Image
 import uuid
-from PyPDF2 import PdfReader
-
+from utils import *
 
 class ImagePipeline :
 
@@ -50,20 +45,28 @@ class ImagePipeline :
     def commit(self) :
         self.db_connection.commit()
         faiss.write_index(self.index, self.faiss_uri)
+    
+    def encode_image(self, path: str) -> torch.Tensor :
+        with torch.no_grad() :
+            image = self.preprocess(image).unsqueeze(0).to(self.device)
+            return self.model.encode_image(image)
+            
+    def encode_text(self, sentance: str) -> list[torch.Tensor] | np.ndarray | torch.Tensor:
+        tokens = clip.tokenize([sentance]).to(self.device)
+        with torch.no_grad() :
+            text_features = self.model.encode_text(tokens)
+            text_np = text_features.detach().cpu().numpy()
+            text_np = np.float32(text_np)
+            return text_np  
+
 
 
     def insert_file(self, path: str) -> tuple :
         file_id = str(uuid.uuid4())
         first_index = self.index.ntotal
-        embeddings = {}
-        with torch.no_grad() :
-            image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)
-            embeddings[path] = self.model.encode_image(image)
-            
-        embed_vector = embeddings[path].detach().cpu().numpy()
-
+        embeddings = self.encode_image(path)
+        embed_vector = embeddings.detach().cpu().numpy()
         embed_vector = np.float32(embed_vector)
-        
         faiss.normalize_L2(embed_vector)
         self.index.add(embed_vector)
         
@@ -78,35 +81,21 @@ class ImagePipeline :
 
         return file_id, first_index
 
+    
+
 
     def similarity_search(self, q: str, k: int, file: bool = False) -> list[int]:
         if not file:
-            tokens = clip.tokenize([q]).to(self.device)
-            text_features = self.model.encode_text(tokens)
+            query_embeddings = self.encode_text(q) 
+            faiss.normalize_L2(query_embeddings)
+            D, I = self.index.search(query_embeddings, k)
 
-            text_np = text_features.detach().cpu().numpy()
-            text_np = np.float32(text_np)
-
-            faiss.normalize_L2(text_np)
-
-            D, I = self.index.search(text_np, k)
-
-            # find first occurence of -1
-
-            arg_minus_one = np.where(I[0] == -1)[0]
-            I = I[0][:arg_minus_one]
-            D = D[0][:arg_minus_one]
+            D, I = remove_neg_indexes(D, I)
 
 
+            Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
 
-            faiss_indices = list(I)
-            print(D, I)
-
-            Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
-
-
-
-            return Pipeline.order_by(self.db.execute(Q).fetchall(), I), D
+            return order_by(self.db.execute(Q).fetchall(), I), D
 
         else:
             file_ext = q.split('.')[-1]
@@ -127,4 +116,4 @@ class ImagePipeline :
                 Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
                 
 
-                return Pipeline.order_by(self.db.execute(Q).fetchall(),I), D
+                return order_by(self.db.execute(Q).fetchall(),I), D

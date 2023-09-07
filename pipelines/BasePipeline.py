@@ -11,6 +11,10 @@ class Pipeline(ABC):
         pass
     
     
+    def delete(self, uuid:str) :
+        pass
+    
+    
 
 
     # @abstractmethod
@@ -34,16 +38,7 @@ class Pipeline(ABC):
     #     pass
 
 
-    @staticmethod
-    def order_by(records, order):
-        print(len(records), len(order))
-        # if not all(0 <= i < len(records) for i in order) or len(set(order)) != len(order):
-        #     raise ValueError("Invalid order list")
 
-        record_dict = {record[0]: record for record in records}
-
-        ordered_records = [record_dict[i] for i in order]
-
-        return ordered_records
+    
 
 
