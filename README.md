@@ -22,16 +22,21 @@ Follow these steps to get started with the Multimodal Vector Store:
    ```shell
    git clone https://github.com/pragneshbarik/semantic-store.git
 
+2. **Install requirements.txt**
+   ```shell
+   pip install -r requirements.txt
+
 2. **Get started in python**
 
-```python
-  import Store from SemanticStore
-  s = Store()
-  s.connect('some2.db')
-  s.insert('gita.txt')
-  s.commit()
-  res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
-  
-  print(res)
+   ```python
+     import Store from SemanticStore
+   
+     s = Store()
+     s.connect('some2.db')
+     s.insert('gita.txt')
+     s.commit()
+     res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
+     
+     print(res)
 
 
