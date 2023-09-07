@@ -1,4 +1,5 @@
 # SemanticStore
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Twitter header - 1 (1)](https://github.com/pragneshbarik/semantic-store/assets/65221256/7b09abd2-aed7-409d-b52c-ced6dc74ca58)
 
 
@@ -26,7 +27,7 @@ Follow these steps to get started with the Multimodal Vector Store:
    ```shell
    pip install -r requirements.txt
 
-2. **Get started in python**
+3. **Get started in python**
 
    ```python
      import Store from SemanticStore
@@ -38,5 +39,17 @@ Follow these steps to get started with the Multimodal Vector Store:
      res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
      
      print(res)
+
+## Contributing
+Contributions are welcome! If you'd like to enhance the Simple Vector Store or fix issues, please follow these steps:
+
+1. Fork the repository.
+2. Create a branch: git checkout -b feature/your-feature or fix/your-fix.
+3. Commit your changes: git commit -m 'Add some feature' or git commit -m 'Fix some issue'.
+4. Push to the branch: git push origin feature/your-feature or git push origin fix/your-fix.
+5. Open a pull request
+
+
+> Note: This vector store is intended for small hobby projects and personal use. It may not be suitable for large-scale or production environments.
 
 
