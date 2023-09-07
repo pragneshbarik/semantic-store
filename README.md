@@ -1,6 +1,7 @@
 # SemanticStore
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Twitter header - 1 (1)](https://github.com/pragneshbarik/semantic-store/assets/65221256/7b09abd2-aed7-409d-b52c-ced6dc74ca58)
+![Twitter header - 1 (2)](https://github.com/pragneshbarik/semantic-store/assets/65221256/3c47be22-28e0-4ece-80de-e8a7bfa111bf)
+
 
 
 A simple easy to use vector store for small hobby projects.
