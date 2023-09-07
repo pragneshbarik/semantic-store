@@ -3,6 +3,7 @@ from pipelines.TextPipeline import TextPipeline
 from pipelines.ImagePipeline import ImagePipeline
 from pipelines.AudioPipeline import AudioPipeline
 from StoreObjects import *
+from utils import * 
 from collections import defaultdict
 
 
@@ -58,7 +59,6 @@ class Store:
         if(len(TextPipeline.split_text(q))<50) :
             images, distances = self.image_pipeline.similarity_search(q, k)
 
-            # [-1, -1, -1, -1, -1]
             image_objects = []
             for image, dist in zip(images, distances):
                 image_object = ImageObject(image[1], image[2], dist)
@@ -106,27 +106,25 @@ class Store:
         pass
 
     
-    def search(self, q: str, k: int) :
+    def search(self, q: str, k: int, modals=['text']) :
         s = StoreObject()
 
-        # only allow text to image search if tokens are less than 50
-        image_objects = self.text_to_image_search(q, k)
-        # s.images = image_objects
+        if 'image' in modals :
+            image_objects = self.text_to_image_search(q, k)
+            s.images = image_objects
+        
+        if 'text' in modals :
+            text_objects = self.text_to_text_search(q, k)
+            s.texts = text_objects
 
-
-        text_objects = self.text_to_text_search(q, k)
-        s.texts = text_objects
+        if 'audio' in modals :
+            pass
+            
         
         return s;
         
 
-
-    
-
-
     def __determine_modality(self, path: str):
-        # Implement a function to determine the modality based on the path
-        # For example, you can check the file extension to determine the modality
         file_extension = path.split(".")[-1].lower()
         if file_extension in ["jpg", "jpeg", "png"]:
             return "image"
@@ -152,7 +150,7 @@ class Store:
         pipeline = self.pipelines[modality]
         res = ""
 
-        # Perform the insertion based on the determined modality
+
         if modality == "text":
             # Insert image data into the image pipeline
             file_id, first_index, last_index = pipeline.insert_file(path)
@@ -183,9 +181,6 @@ class Store:
             
         else:
             raise FileNotFoundError(path)
-            # print("Unsupported modality.")
-
-        # Commit changes to the database
         self.commit()
         return res;
 

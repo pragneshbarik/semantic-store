@@ -89,13 +89,7 @@ class ImagePipeline :
 
             faiss.normalize_L2(text_np)
 
-            D, I = self.index.search(text_np, k)
-
-            # find first occurence of -1
-
-            arg_minus_one = np.where(I[0] == -1)[0]
-            I = I[0][:arg_minus_one]
-            D = D[0][:arg_minus_one]
+            
 
 
 
