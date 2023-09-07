@@ -13,7 +13,7 @@ from utils import *
 from PIL import Image
 
 import re
-from nltk.corpus import stopwords
+
 
 
 
@@ -78,8 +78,8 @@ class TextPipeline(Pipeline):
     def insert_into_clip(self, path: str, document_id: str) -> [int, int]:
         file_ext = path.split('.')[-1]
 
-        text = self.extract_text(path)
-        sentences = self.split_text(text, 77)
+        text = extract_text(path)
+        sentences = split_text(text, 77)
         
         tokens = clip.tokenize(sentences).to(self.device)
 
@@ -103,8 +103,8 @@ class TextPipeline(Pipeline):
         return first_index, last_index
     
     def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
-        text = self.extract_text(path)
-        sentences = self.split_text(text, self.chunk_size)
+        text = extract_text(path)
+        sentences = split_text(text, self.chunk_size)
         embeddings = self.encode_text(sentences)
         first_index = self.qa_index.ntotal
         self.qa_index.add(embeddings)
@@ -131,7 +131,7 @@ class TextPipeline(Pipeline):
     
     def insert_text(self, text: str) :
         document_id = str(uuid.uuid4())
-        sentences = self.split_text(text, self.chunk_size)
+        sentences = split_text(text, self.chunk_size)
         embeddings = self.encode_text(sentences)
         first_index = self.qa_index.ntotal
         self.qa_index.add(embeddings)
@@ -185,11 +185,11 @@ class TextPipeline(Pipeline):
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
 
-        faiss_indices = list(I[0])
+        D, I = remove_neg_indexes(D, I)
 
-        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
+        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
 
-        return order_by(self.db.execute(Q).fetchall(), I[0]) , D
+        return order_by(self.db.execute(Q).fetchall(), I) , D
 
 
     
