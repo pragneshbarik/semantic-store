@@ -40,8 +40,20 @@ Follow these steps to get started with the Multimodal Vector Store:
      
      print(res)
 
+## Models
+SemanticStore uses various state-of-the-art models to process text, images and audio.
+
+| **Pipelines** |        **Model 1**        |        **Model 2**        |         **Model 3**         |         **Model 4**         |
+|:-------------:|:-------------------------:|:-------------------------:|:---------------------------:|:---------------------------:|
+| Text          | multi-qa-MiniLM-L6-cos-v1 |           _CLIP_          |              -              |              -              |
+| Audio         |          Whisper          | multi-qa-MiniLM-L6-cos-v1 |            _CLIP_           |              -              |
+| Image         |            CLIP           |           _BLIP_          | _multi-qa-MiniLM-L6-cos-v1_ |              -              |
+| _Video_       |         _Whisper_         |           _CLIP_          |            _BLIP_           | _multi-qa-MiniLM-L6-cos-v1_ |
+
+**Note** : Models in _Italics_ are still to be implemented.
+
 ## Contributing
-Contributions are welcome! If you'd like to enhance the Simple Vector Store or fix issues, please follow these steps:
+Contributions are welcome! If you'd like to enhance the SemanticStore or fix issues, please follow these steps:
 
 1. Fork the repository.
 2. Create a branch: git checkout -b feature/your-feature or fix/your-fix.
@@ -50,6 +62,6 @@ Contributions are welcome! If you'd like to enhance the Simple Vector Store or f
 5. Open a pull request
 
 
-> Note: This vector store is intended for small hobby projects and personal use. It may not be suitable for large-scale or production environments.
+> **Note**: This vector store is intended for small hobby projects and personal use. It may not be suitable for large-scale or production environments.
 
 
