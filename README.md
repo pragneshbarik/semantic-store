@@ -1,5 +1,21 @@
 # SemanticStore
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+<p align="center">
+   <img src="https://img.shields.io/badge/license-MIT-blue.svg" /> 
+   <img src="https://img.shields.io/badge/version-alpha-red" alt="Alpha Version">
+    <a href="https://github.com/pragneshbarik/semantic-store/txtai">
+        <img src="https://img.shields.io/github/last-commit/pragneshbarik/semantic-store.svg?style=flat&color=blue" alt="GitHub last commit"/>
+    </a>
+   <img src="https://img.shields.io/github/contributors/pragneshbarik/semantic-store" />
+    <a href="https://github.com/pragneshbarik/semantic-store/txtai/issues">
+        <img src="https://img.shields.io/github/issues/pragneshbarik/semantic-store.svg?style=flat&color=success" alt="GitHub issues"/>
+    </a>
+        <img src="https://img.shields.io/badge/discord-join-blue?style=flat&logo=discord&logocolor=white" alt="Join Slack"/>
+
+    
+   
+</p>
+
 ![Twitter header - 1 (2)](https://github.com/pragneshbarik/semantic-store/assets/65221256/3c47be22-28e0-4ece-80de-e8a7bfa111bf)
 
 
@@ -33,12 +49,11 @@ Follow these steps to get started with the Multimodal Vector Store:
    ```python
      import Store from SemanticStore
    
-     s = Store()
-     s.connect('some2.db')
-     s.insert('gita.txt')
-     s.commit()
-     res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
-     
+     store = Store()
+     store.connect('semantic.db')
+     store.insert('gita.txt')
+     store.commit()
+     res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
      print(res)
 
 ## Models
