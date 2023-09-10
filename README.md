@@ -47,7 +47,7 @@ Follow these steps to get started with the Multimodal Vector Store:
 3. **Get started in python**
 
    ```python
-     import Store from SemanticStore
+     from SemanticStore from Store
    
      store = Store()
      store.connect('semantic.db')
