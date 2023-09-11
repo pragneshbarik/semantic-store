@@ -1,7 +1,7 @@
 import os
 import requests
 import sqlite3
-from utils import * 
+from pipelines.utils import *
 from StoreObjects import *
 from collections import defaultdict
 from pipelines.TextPipeline import TextPipeline
@@ -10,34 +10,34 @@ from pipelines.AudioPipeline import AudioPipeline
 
 
 class Store:
-    def __init__(self) :
+    def __init__(self):
         self.__is_connected = False
-        
 
-    
-    def connect(self, store_uri: str) :
-        sql_uri = store_uri.split('.')[0]  + ".db"
+    def connect(self, store_uri: str):
+        sql_uri = store_uri.split('.')[0] + ".db"
         self.db_connection = sqlite3.connect(sql_uri)
         self.db = self.db_connection.cursor()
-
 
         text_index = sql_uri + '_text.faiss'
         image_index = sql_uri + '_image.faiss'
 
-        self.image_pipeline = ImagePipeline(faiss_uri=image_index, sqlite_uri=sql_uri)
-        self.text_pipeline = TextPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
-        self.audio_pipeline = AudioPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
+        self.image_pipeline = ImagePipeline(
+            faiss_uri=image_index, sqlite_uri=sql_uri)
+        self.text_pipeline = TextPipeline(
+            faiss_uri=text_index, sqlite_uri=sql_uri)
+        self.audio_pipeline = AudioPipeline(
+            faiss_uri=text_index, sqlite_uri=sql_uri)
 
         self.pipelines = {
-            "image" : self.image_pipeline,
-            "text" : self.text_pipeline,
-            "audio" : self.audio_pipeline
+            "image": self.image_pipeline,
+            "text": self.text_pipeline,
+            "audio": self.audio_pipeline
         }
 
         self.__is_connected = True
 
         self.db.execute(
-        '''
+            '''
         CREATE TABLE IF NOT EXISTS master_file_record (
             uuid TEXT PRIMARY KEY,
             file_path TEXT,
@@ -46,19 +46,16 @@ class Store:
             faiss_end_index TEXT
         )
         '''
-)
-
+        )
 
         self.commit()
 
-
-    def multimodal_search(self, path: str, k: int, left: str, right: str) :
+    def multimodal_search(self, path: str, k: int, left: str, right: str):
         pass
-    
 
-    def text_to_image_search(self, q:str, k: int) :
+    def text_to_image_search(self, q: str, k: int):
 
-        if(len(split_text(q))<50) :
+        if(len(split_text(q)) < 50):
             images, distances = self.image_pipeline.similarity_search(q, k)
 
             image_objects = []
@@ -67,89 +64,86 @@ class Store:
                 image_objects.append(image_object)
 
         return image_objects
-    
-    def text_to_text_search(self, q: str, k:int) :
+
+    def text_to_text_search(self, q: str, k: int):
         temp_texts, distances = self.text_pipeline.similarity_search(q, k)
-                
+
         texts = []
-        for text, d in zip(temp_texts, list(distances)) :
+        for text, d in zip(temp_texts, list(distances)):
             texts.append(list(text) + [d])
-        
+
         texts_dict = defaultdict(list)
-        for text in texts :
+        for text in texts:
             texts_dict[text[1]].append(text)
 
         text_objects = []
 
-        for uuid in texts_dict :
+        for uuid in texts_dict:
             text_object = TextObject(uuid, texts_dict[uuid][0][2], [], [])
-            for text in texts_dict[uuid] :
+            for text in texts_dict[uuid]:
                 text_object.chunks.append(text[3])
                 text_object.distances.append(text[4])
-            
-            text_objects.append(text_object)
-        
-        return text_objects
-            
 
-    def text_to_audio_search(self, q: str, k: int) :
+            text_objects.append(text_object)
+
+        return text_objects
+
+    def text_to_audio_search(self, q: str, k: int):
         temp_audios, distances = self.audio_pipeline.similarity_search(q, k)
-                
+
         audios = []
-        for audio, d in zip(temp_audios, list(distances)) :
+        for audio, d in zip(temp_audios, list(distances)):
             audios.append(list(audio) + [d])
-        
+
         audio_dict = defaultdict(list)
 
-        for audio in audios :
+        for audio in audios:
             audio_dict[audio[1]].append(audio)
-
 
         audio_objects = []
 
-        for uuid in audio_dict :
+        for uuid in audio_dict:
             audio_object = AudioObject(uuid, audio_dict[uuid][0][2], [], [])
-            for audio in audio_dict[uuid] :
+            for audio in audio_dict[uuid]:
                 audio_object.chunks.append(audio[3])
                 audio_object.distances.append(audio[4])
-            
+
             audio_objects.append(audio_object)
-        
+
         return audio_objects
 
-    def image_to_image_search(self, path: str, k:int) :
+    def image_to_image_search(self, path: str, k: int):
+        
         pass
 
-    def audio_to_text_search(self, path: str, k:int) :
+    def audio_to_text_search(self, path: str, k: int):
         pass
-
-
 
     def audio_to_image_search(self, path: str, k: int):
         pass
 
-    def audio_to_audio_search(self, path: str, k: int) :
+    def audio_to_audio_search(self, path: str, k: int):
         pass
 
-    
-    def search(self, q: str, k: int, modals=['text']) :
+    def search(self, q: str, k: int, modals=['text']):
 
         s = StoreObject()
 
-        if 'image' in modals :
+        if 'image' in modals:
             image_objects = self.text_to_image_search(q, k)
             s.images = image_objects
-        
-        if 'text' in modals :
+
+        if 'text' in modals:
             text_objects = self.text_to_text_search(q, k)
             s.texts = text_objects
 
-        if 'audio' in modals :
+        if 'audio' in modals:
             pass
-            
-        
-        return s;
-        
+
+        if 'imgtoimg' in modals:
+            image_objects = self.image_to_image_search(q, k)
+            s.images = image_objects
+        return s
 
     def __determine_modality(self, path: str):
         file_extension = path.split(".")[-1].lower()
@@ -167,7 +161,6 @@ class Store:
             print("Not connected to the database. Call connect() first.")
             return
 
-       
         modality = self.__determine_modality(path)
 
         if modality not in self.pipelines:
@@ -177,16 +170,15 @@ class Store:
         pipeline = self.pipelines[modality]
         res = ""
 
-
         if modality == "text":
             # Insert image data into the image pipeline
             file_id, first_index, last_index = pipeline.insert_file(path)
             self.db.execute(
                 "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
-                 (file_id, path, "text", first_index, last_index)               
+                (file_id, path, "text", first_index, last_index)
             )
             res = file_id
-            
+
         elif modality == "image":
             file_id, first_index = pipeline.insert_file(path)
             self.db.execute(
@@ -195,7 +187,6 @@ class Store:
             )
             res = file_id
 
-            
         elif modality == "audio":
             file_id, first_index, last_index = pipeline.insert_file(path)
 
@@ -205,11 +196,10 @@ class Store:
             )
             res = file_id
 
-            
         else:
             raise FileNotFoundError(path)
         self.commit()
-        return res;
+        return res
 
     def insert_remote(self, uri: str):
         try:
@@ -228,41 +218,36 @@ class Store:
 
                 return inserted_file_id
             else:
-                print("Failed to fetch remote file. Status code:", response.status_code)
+                print("Failed to fetch remote file. Status code:",
+                      response.status_code)
                 return None
         except Exception as e:
             print("Error inserting remote file:", str(e))
             return None
-    
-    def get(self, uuid: str) :
+
+    def get(self, uuid: str):
         q = f"SELECT * FROM master_file_record WHERE uuid = '{uuid}'"
         res = self.db.execute(q).fetchone()
         f = FileObject(res[0], res[1], res[2])
-        return f;
+        return f
 
-    def delete(self, uuid: str) :
-        pass    
+    def delete(self, uuid: str):
+        pass
 
-
-
-    def commit(self) :
+    def commit(self):
         self.image_pipeline.commit()
         self.audio_pipeline.commit()
         self.text_pipeline.commit()
         self.db_connection.commit()
 
-    def sql(self) :
+    def sql(self):
         return self.db
 
 
-
-
-# import Store from SemanticStore
-
 s = Store()
 s.connect('some2.db')
-s.insert('gita.txt')
+s.insert("gita.txt")
 s.commit()
-res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
-
+res = s.search("what is meaning of life according to gita ?",
+               5, modals=['text', 'image'])
 print(res)

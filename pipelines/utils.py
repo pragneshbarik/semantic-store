@@ -1,11 +1,13 @@
 import re
-import nltk
 import numpy as np
 from PyPDF2 import PdfReader
-from nltk.corpus import stopwords
 
-nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
-nltk.download('stopwords')  # Ensure that stop words are downloaded
+try:
+    import nltk
+    from nltk.corpus import stopwords
+except:
+    nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
+    nltk.download('stopwords')  # Ensure that stop words are downloaded
 
 def order_by(records, order):
     """
@@ -18,6 +20,7 @@ def order_by(records, order):
     Returns:
         list: A new list of records ordered according to the order list.
     """
+    print(records,order)
     record_dict = {record[0]: record for record in records}
     ordered_records = [record_dict[i] for i in order]
     return ordered_records

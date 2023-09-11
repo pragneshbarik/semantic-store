@@ -9,7 +9,7 @@ import faiss
 import torch
 import clip
 import uuid
-from utils import *
+from pipelines.utils import *
 from PIL import Image
 
 import re

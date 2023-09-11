@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 import sqlite3
-from pipelines.BasePipeline import Pipeline
+from BasePipeline import Pipeline
 from sentence_transformers import SentenceTransformer
 import faiss
 import os
@@ -12,7 +12,7 @@ from PIL import Image
 import uuid
 from utils import *
 
-class ImagePipeline :
+class ImagePipeline(Pipeline) :
 
     def __init__(self, faiss_uri: str, sqlite_uri: str) -> None :
         self.db_connection = sqlite3.connect(sqlite_uri)
@@ -48,6 +48,7 @@ class ImagePipeline :
     
     def encode_image(self, path: str) -> torch.Tensor :
         with torch.no_grad() :
+            image = Image.open(path)
             image = self.preprocess(image).unsqueeze(0).to(self.device)
             return self.model.encode_image(image)
             
@@ -83,7 +84,6 @@ class ImagePipeline :
 
     
 
-
     def similarity_search(self, q: str, k: int, file: bool = False) -> list[int]:
         if not file:
             query_embeddings = self.encode_text(q) 
@@ -91,7 +91,6 @@ class ImagePipeline :
             D, I = self.index.search(query_embeddings, k)
 
             D, I = remove_neg_indexes(D, I)
-
 
             Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
 
@@ -103,15 +102,16 @@ class ImagePipeline :
                 image = self.preprocess(Image.open(q)).unsqueeze(0).to(self.device)
             
                 embeddings = self.model.encode_image(image)
-                
+                embeddings = embeddings.detach().numpy()
                 D, I = self.index.search(embeddings, k)
+                
+                D, I = remove_neg_indexes(D, I)
 
-                arg_minus_one = np.where(I[0] == -1)[0]
-                I = I[0][:arg_minus_one]
-                D = D[0][:arg_minus_one]
+                # arg_minus_one = np.where(I[0] == -1)[0]
+                # I = I[0][:arg_minus_one]
+                # D = D[0][:arg_minus_one]
 
                 faiss_indices = list(I)
-
 
                 Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
                 
