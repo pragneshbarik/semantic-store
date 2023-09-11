@@ -145,7 +145,8 @@ class Store:
             s.texts = text_objects
 
         if 'audio' in modals :
-            pass
+            audio_objects = self.text_to_audio_search(q, k)
+            s.audios = audio_objects
             
         
         return s;
@@ -259,10 +260,18 @@ class Store:
 
 # import Store from SemanticStore
 
-s = Store()
-s.connect('some2.db')
-s.insert('gita.txt')
-s.commit()
-res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
+# store = Store()
+# store.connect('some2.db')
+# store.insert('gita.txt')
+# store.commit()
+# res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
-print(res)
+# print(res)
+
+image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='image.db')
+image_pipeline.insert_file('cat.jpg')
+
+image_pipeline.commit()
+res = image_pipeline.similarity_search(q="a dog", k=1);
+print(res);
+

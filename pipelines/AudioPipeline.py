@@ -2,20 +2,14 @@
 from pipelines.BasePipeline import Pipeline
 import pipelines.TextPipeline as TextPipeline
 import whisper
-import re
 import torch
 import numpy as np
-import time
-from abc import ABC, abstractmethod
 import sqlite3
 from sentence_transformers import SentenceTransformer
 import faiss
-import os
 import torch
-import clip
-from PIL import Image
+from utils import *
 import uuid
-from PyPDF2 import PdfReader
 
 
 class AudioPipeline(Pipeline):
@@ -59,7 +53,7 @@ class AudioPipeline(Pipeline):
         extracted_text = self.whisper_model.transribe(path)
         extracted_text = extracted_text['text']
 
-        sentences = TextPipeline.split_text(extracted_text)
+        sentences = split_text(extracted_text)
         embeddings = self.encode_text(sentences)
         first_index = self.index.ntotal
         self.index.add(embeddings)

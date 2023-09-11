@@ -48,7 +48,7 @@ class ImagePipeline :
     
     def encode_image(self, path: str) -> torch.Tensor :
         with torch.no_grad() :
-            image = self.preprocess(image).unsqueeze(0).to(self.device)
+            image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)
             return self.model.encode_image(image)
             
     def encode_text(self, sentance: str) -> list[torch.Tensor] | np.ndarray | torch.Tensor:
