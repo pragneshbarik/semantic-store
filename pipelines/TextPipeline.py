@@ -68,6 +68,12 @@ class TextPipeline(Pipeline):
         faiss.write_index(self.qa_index, self.qa_faiss_uri)
         faiss.write_index(self.clip_index, self.clip_faiss_uri)
 
+    def fetch_indexes(self, file_id) :
+        Q = f"SELECT faiss_id FROM qa_text_table WHERE file_id = '{file_id}'"
+        res = self.db.execute(Q).fetchall()
+
+        return res 
+
         
 
     def encode_text(self, sentences: list[str]) -> list[torch.Tensor] | np.ndarray | torch.Tensor:
@@ -118,9 +124,11 @@ class TextPipeline(Pipeline):
         
         return first_index, last_index
 
-    def insert_file(self, path: str) :
+    def insert_file(self, path: str, file_id=None) :
         # text = self.extract_text(path)
-        file_id = str(uuid.uuid4())
+        if file_id==None :
+            file_id = str(uuid.uuid4())
+        # file_id = str(uuid.uuid4())
         indices = {}
         # indices['clip'] = self.insert_into_clip(path, document_id)
         first_index, last_index = self.insert_into_qa(path, file_id)
@@ -160,7 +168,7 @@ class TextPipeline(Pipeline):
             return [], []
     
     def image_to_text_search(self, path: str, k:int) :
-        query_embedding = {}
+        query_embedding = { }
 
         with torch.no_grad() :
             image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)

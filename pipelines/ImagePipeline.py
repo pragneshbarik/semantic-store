@@ -61,8 +61,17 @@ class ImagePipeline :
 
 
 
-    def insert_file(self, path: str) -> tuple :
-        file_id = str(uuid.uuid4())
+    def fetch_indexes(self, file_id) :
+        Q = f"SELECT faiss_id FROM image_table WHERE file_id = '{file_id}'"
+        res = self.db.execute(Q).fetchall()
+
+        return res 
+
+    def insert_file(self, path: str, file_id = None) -> tuple :
+        if file_id == None :
+            file_id = str(uuid.uuid4())
+        
+        # file_id = str(uuid.uuid4())
         first_index = self.index.ntotal
         embeddings = self.encode_image(path)
         embed_vector = embeddings.detach().cpu().numpy()
@@ -79,7 +88,24 @@ class ImagePipeline :
 
         self.commit()
 
-        return file_id, first_index
+        return file_id, first_index, first_index
+
+    def image_to_image_search(self, path: str, k: int) :
+        file_ext = path.split('.')[-1]
+        if file_ext.lower() in ['png', 'jpg', 'jpeg']:
+            if file_ext.lower() in ['png', 'jpg', 'jpeg']:
+                image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)
+        
+                embeddings = self.model.encode_image(image)
+
+                D, I = self.index.search(embeddings, k)
+
+                D,  I = remove_neg_indexes(D, I)
+
+                Q = f"SELECT file_id FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
+
+                return order_by(self.db.execute(Q).fetchall(), I), D
+
 
     
 
@@ -93,7 +119,7 @@ class ImagePipeline :
             D, I = remove_neg_indexes(D, I)
 
 
-            Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
+            Q = f"SELECT file_id FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
 
             return order_by(self.db.execute(Q).fetchall(), I), D
 
