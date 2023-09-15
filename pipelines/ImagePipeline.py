@@ -11,24 +11,17 @@ import clip
 from PIL import Image
 import uuid
 from utils import *
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 class ImagePipeline :
 
-    def __init__(self, faiss_uri: str, sqlite_uri: str) -> None :
-        self.db_connection = sqlite3.connect(sqlite_uri)
-        self.db = self.db_connection.cursor()
-        
-        
-        self.db.execute('''
-            CREATE TABLE IF NOT EXISTS image_table (
-                faiss_id INTEGER PRIMARY KEY,
-                file_id TEXT,
-                path TEXT
-            )
-        ''')
-
-        self.db_connection.commit()
-        
+    def __init__(self, faiss_uri: str, sql_uri: str) -> None :
+        self.__db_connection = create_engine('sqlite:///' + sql_uri)
+        Session = sessionmaker(bind=self.__db_connection)
+        self.__db = Session()
+            
         try :
             self.index = faiss.read_index(faiss_uri)
         
@@ -43,7 +36,7 @@ class ImagePipeline :
   
 
     def commit(self) :
-        self.db_connection.commit()
+        self.__db.commit()
         faiss.write_index(self.index, self.faiss_uri)
     
     def encode_image(self, path: str) -> torch.Tensor :
@@ -62,16 +55,15 @@ class ImagePipeline :
 
 
     def fetch_indexes(self, file_id) :
-        Q = f"SELECT faiss_id FROM image_table WHERE file_id = '{file_id}'"
-        res = self.db.execute(Q).fetchall()
-
-        return res 
+        query = self.__db.query(ImageRecord.faiss_id).filter_by(file_id=file_id) 
+        res = query.all()
+        result_values = [row[0] for row in res]
+        return result_values
 
     def insert_file(self, path: str, file_id = None) -> tuple :
         if file_id == None :
             file_id = str(uuid.uuid4())
         
-        # file_id = str(uuid.uuid4())
         first_index = self.index.ntotal
         embeddings = self.encode_image(path)
         embed_vector = embeddings.detach().cpu().numpy()
@@ -81,10 +73,13 @@ class ImagePipeline :
         
         
 
-        self.db.execute(
-           "INSERT INTO image_table (faiss_id, file_id, path) VALUES (?, ?, ?)", 
-           (first_index, file_id, path)
+        new_record = ImageRecord(
+            faiss_id=first_index,
+            file_id=file_id,
+            path=path
         )
+        self.__db.add(new_record)
+
 
         self.commit()
 
@@ -93,53 +88,36 @@ class ImagePipeline :
     def image_to_image_search(self, path: str, k: int) :
         file_ext = path.split('.')[-1]
         if file_ext.lower() in ['png', 'jpg', 'jpeg']:
-            if file_ext.lower() in ['png', 'jpg', 'jpeg']:
-                image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)
-        
-                embeddings = self.model.encode_image(image)
-
-                D, I = self.index.search(embeddings, k)
-
-                D,  I = remove_neg_indexes(D, I)
-
-                Q = f"SELECT file_id FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
-
-                return order_by(self.db.execute(Q).fetchall(), I), D
-
-
+            image = self.preprocess(Image.open(path)).unsqueeze(0).to(self.device)
     
+            query_embedding = self.model.encode_image(image)
+
+            D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 512), k)
+            D, I = remove_neg_indexes(D, I)
+
+            if len(I) > 0:
+                session = self.__db
+                query = session.query(ImageRecord).filter(ImageRecord.faiss_id.in_(I))
+                records = query.all()
+                records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
+                result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
+                return result, D
+            else:
+                return [], []
+
 
 
     def similarity_search(self, q: str, k: int, file: bool = False) -> list[int]:
-        if not file:
-            query_embeddings = self.encode_text(q) 
-            faiss.normalize_L2(query_embeddings)
-            D, I = self.index.search(query_embeddings, k)
+        query_embedding = self.model.encode_text(q)
+        D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 512), k)
+        D, I = remove_neg_indexes(D, I)
 
-            D, I = remove_neg_indexes(D, I)
-
-
-            Q = f"SELECT file_id FROM image_table WHERE faiss_id in ({','.join(map(str, I))})"
-
-            return order_by(self.db.execute(Q).fetchall(), I), D
-
+        if len(I) > 0:
+            session = self.__db
+            query = session.query(ImageRecord).filter(ImageRecord.faiss_id.in_(I))
+            records = query.all()
+            records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
+            result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
+            return result, D
         else:
-            file_ext = q.split('.')[-1]
-            if file_ext.lower() in ['png', 'jpg', 'jpeg']:
-                image = self.preprocess(Image.open(q)).unsqueeze(0).to(self.device)
-            
-                embeddings = self.model.encode_image(image)
-                
-                D, I = self.index.search(embeddings, k)
-
-                arg_minus_one = np.where(I[0] == -1)[0]
-                I = I[0][:arg_minus_one]
-                D = D[0][:arg_minus_one]
-
-                faiss_indices = list(I)
-
-
-                Q = f"SELECT * FROM image_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
-                
-
-                return order_by(self.db.execute(Q).fetchall(),I), D
+            return [], []

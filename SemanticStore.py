@@ -8,29 +8,30 @@ from collections import defaultdict
 from pipelines.TextPipeline import TextPipeline
 from pipelines.ImagePipeline import ImagePipeline
 from pipelines.AudioPipeline import AudioPipeline
-
-
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 
 class Store:
     def __init__(self) :
         self.__is_connected = False
-        
+        self.__db_connection = None
+        self.__db = None
 
     
     def connect(self, store_uri: str) :
-        sql_uri = store_uri.split('.')[0]  + ".db"
-        self.__db_connection = sqlite3.connect(sql_uri)
-        self.__db = self.__db_connection.cursor()
+        base_uri = store_uri.split('.')[0]
+        sql_uri = base_uri + '.db' 
 
 
-        text_index = sql_uri + '_text.faiss'
-        image_index = sql_uri + '_image.faiss'
+        text_index = base_uri + '_text.faiss'
+        image_index = base_uri + '_image.faiss'
 
-        self.__image_pipeline = ImagePipeline(faiss_uri=image_index, sqlite_uri=sql_uri)
-        self.__text_pipeline = TextPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
-        self.__audio_pipeline = AudioPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
+        self.__image_pipeline = ImagePipeline(faiss_uri=image_index, sql_uri=sql_uri)
+        self.__text_pipeline = TextPipeline(faiss_uri=text_index, sql_uri=sql_uri)
+        self.__audio_pipeline = AudioPipeline(faiss_uri=text_index, sql_uri=sql_uri)
 
         self.__pipelines = {
             "image" : self.__image_pipeline,
@@ -38,29 +39,13 @@ class Store:
             "audio" : self.__audio_pipeline
         }
 
+        self.__db_connection = create_engine('sqlite:///' + sql_uri)
+        Session = sessionmaker(bind=self.__db_connection)
+        self.__db = Session()
+
         self.__is_connected = True
 
-        self.__db.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS master_file_record (
-            uuid TEXT PRIMARY KEY,
-            file_path TEXT,
-            file_type TEXT,
-            faiss_start_index TEXT,
-            faiss_end_index TEXT
-        )
-        '''
-        )
-
-        self.__db.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS deleted_ids (
-                table_type TEXT,
-                faiss_index INTEGER
-            )
-            '''
-
-        )
+        Base.metadata.create_all(self.__db_connection)
 
         self.commit()
 
@@ -186,12 +171,16 @@ class Store:
         else:
             return "unsupported"  # Modify as needed for your specific use case
 
-    def __sql_insert_into_master_file_record(self, file_id, file_path, modality, faiss_start_index, faiss_end_index):
-        query = "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)"
-        values = (file_id, file_path, modality, faiss_start_index, faiss_end_index)
-    
-        self.__db.execute(query, values)
-        self.commit()
+    def __insert_into_master_file_record(self, file_id, file_path, modality):
+        if self.__is_connected:
+            record = MasterFileRecord(
+                uuid=file_id,
+                file_path=file_path,
+                file_type=modality,
+            )
+            self.__db.add(record)
+            self.commit()
+
 
 
     def __insert_local(self, path: str) :
@@ -212,7 +201,7 @@ class Store:
         file_id, first_index, last_index = pipeline.insert_file(path, file_id)
         
 
-        self.__sql_insert_into_master_file_record(file_id, path, modality, first_index, last_index)
+        self.__insert_into_master_file_record(file_id, path, modality)
         return file_id;
 
    
@@ -263,11 +252,14 @@ class Store:
 
 
     
-    def get(self, uuid: str) :
-        q = f"SELECT * FROM master_file_record WHERE uuid = '{uuid}'"
-        res = self.__db.execute(q).fetchone()
-        f = FileObject(res[0], res[1], res[2])
-        return f;
+    def get(self, uuid: str):
+        if self.__is_connected:
+            result = self.__db.query(MasterFileRecord).filter_by(uuid=uuid).first()
+            if result:
+                f = FileObject(result.uuid, result.file_path, result.file_type)
+                return f
+            else:
+                return None  # 
 
     def delete(self, uuid: str) :
         pass    
@@ -278,7 +270,7 @@ class Store:
         self.__image_pipeline.commit()
         self.__audio_pipeline.commit()
         self.__text_pipeline.commit()
-        self.__db_connection.commit()
+        self.__db.commit()
 
     def _db(self) :
         return self.__db
@@ -289,11 +281,12 @@ class Store:
 # import Store from SemanticStore
 
 store = Store()
-store.connect('some2.db')
+store.connect('some3.db')
 # store.insert('https://images.pexels.com/photos/3617500/pexels-photo-3617500.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')
-# store.commit()
+# store.insert('gita.txt')
+store.commit()
 
-res = store.search(q="some class", k=1, modals=['image'])
+res = store.search(q="what is meaning of life accoring to gita", k=1, modals=['text'])
 # res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
 print(res)

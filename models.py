@@ -14,16 +14,17 @@ class MasterFileRecord(Base):
 class DeletedIds(Base):
     __tablename__ = 'deleted_ids'
 
+    delete_id = Column(String, primary_key=True)
     table_type = Column(String)
     faiss_index = Column(Integer)
 
-class Image(Base) :
+class ImageRecord(Base) :
     __tablename__ = 'image_table'
 
     faiss_id = Column(String, primary_key=True)
     file_id = Column(String)
 
-class Text(Base) :
+class TextRecord(Base) :
     __tablename__ = 'text_table'
 
     faiss_id = Column(String, primary_key=True)
@@ -33,23 +34,23 @@ class Text(Base) :
 
 
 
-# class Store:
-#     def __init__(self):
-#         self.__is_connected = False
+# # class Store:
+# #     def __init__(self):
+# #         self.__is_connected = False
 
-#     def connect(self, store_uri: str):
-#         sql_uri = store_uri.split('.')[0] + ".db"
-#         self.engine = create_engine(f'sqlite:///{sql_uri}', echo=False)
-#         Session = sessionmaker(bind=self.engine)
-#         self.session = Session()
+# #     def connect(self, store_uri: str):
+# #         sql_uri = store_uri.split('.')[0] + ".db"
+# #         self.engine = create_engine(f'sqlite:///{sql_uri}', echo=False)
+# #         Session = sessionmaker(bind=self.engine)
+# #         self.session = Session()
 
-#         # Create tables
-#         Base.metadata.create_all(self.engine)
+# #         # Create tables
+# #         Base.metadata.create_all(self.engine)
 
-#         # Rest of your code remains mostly the same
+# #         # Rest of your code remains mostly the same
 
-#     def commit(self):
-#         self.session.commit()
+# #     def commit(self):
+# #         self.session.commit()
 
-#     def _db(self):
-#         return self.session
+# #     def _db(self):
+# #         return self.session

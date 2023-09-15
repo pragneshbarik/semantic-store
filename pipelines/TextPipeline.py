@@ -11,6 +11,9 @@ import clip
 import uuid
 from utils import *
 from PIL import Image
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 import re
 
@@ -18,61 +21,38 @@ import re
 
 
 class TextPipeline(Pipeline):
-    def __init__(self, faiss_uri: str, sqlite_uri: str) -> None :
+    def __init__(self, faiss_uri: str, sql_uri: str) -> None :
 
         self.chunk_size = 256 # word chunk size
         self.qa_faiss_uri = "qa_" + faiss_uri
-        self.clip_faiss_uri = "clip_" + faiss_uri
-        self.db_connection = sqlite3.connect(sqlite_uri)
-        self.db = self.db_connection.cursor()
+        self.__db_connection = create_engine('sqlite:///' + sql_uri)
+        Session = sessionmaker(bind=self.__db_connection)
+        self.__db = Session()
         
-        
-        self.db.execute('''
-            CREATE TABLE IF NOT EXISTS qa_text_table (
-                faiss_id INTEGER PRIMARY KEY,
-                file_id TEXT,
-                file_path TEXT,
-                text_data TEXT
-            )
-        ''')
     
-        self.db.execute('''
-        CREATE TABLE IF NOT EXISTS clip_text_table (
-                faiss_id INTEGER PRIMARY KEY,
-                file_id TEXT,
-                file_path TEXT,
-                text_data TEXT
-                        
-        )
-        ''')
-
-        self.db_connection.commit()
         
         try :
             self.qa_index = faiss.read_index(self.qa_faiss_uri)
-            self.clip_index = faiss.read_index(self.clip_faiss_uri)
         
         except RuntimeError:
             self.qa_index = faiss.IndexFlatL2(384)
-            self.clip_index = faiss.IndexFlatL2(512)
             faiss.write_index(self.qa_index, self.qa_faiss_uri)
-            faiss.write_index(self.clip_index, self.clip_faiss_uri)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.qa_model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
-        self.clip_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
     
     def commit(self) :
         self.db_connection.commit()
         faiss.write_index(self.qa_index, self.qa_faiss_uri)
-        faiss.write_index(self.clip_index, self.clip_faiss_uri)
 
     def fetch_indexes(self, file_id) :
-        Q = f"SELECT faiss_id FROM qa_text_table WHERE file_id = '{file_id}'"
-        res = self.db.execute(Q).fetchall()
+        query = self.__db.query(TextRecord.faiss_id).filter_by(file_id=file_id) 
+        res = query.all()
+        result_values = [row[0] for row in res]
+        return result_values
 
-        return res 
+       
 
         
 
@@ -81,32 +61,7 @@ class TextPipeline(Pipeline):
         return np.array(embeddings).reshape(-1, 384)
 
 
-    def insert_into_clip(self, path: str, document_id: str) -> [int, int]:
-        file_ext = path.split('.')[-1]
-
-        text = extract_text(path)
-        sentences = split_text(text, 77)
-        
-        tokens = clip.tokenize(sentences).to(self.device)
-
-        text_features = self.model.encode_text(tokens)
-
-        embeddings = text_features.detach().cpu().numpy()
-        embeddings = np.float32(embeddings)
-
-        faiss.normalize_L2(embeddings)
-
-        first_index = self.clip_index.ntotal
-        self.clip_index.add(embeddings)
-        last_index = self.clip_index.ntotal
-
-        for i, sentence in enumerate(sentences) :
-            self.db.execute(
-                "INSERT INTO clip_text_table (faiss_id, file_id, file_path, text_data) VALUES (?, ?, ?, ?)",
-                (first_index + i, document_id, path, sentence)
-            )
-        
-        return first_index, last_index
+    
     
     def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
         text = extract_text(path)
@@ -117,25 +72,24 @@ class TextPipeline(Pipeline):
         last_index = self.qa_index.ntotal
 
         for i, sentence in enumerate(sentences) :
-            self.db.execute(
-                "INSERT INTO qa_text_table (faiss_id, file_id, file_path, text_data) VALUES (?, ?, ?, ?)",
-                (first_index + i, file_id, path, sentence)
+            new_record = TextRecord(
+                faiss_id=first_index + i,
+                file_id=file_id,
+                text_data=sentence
             )
+            self.__db.add(new_record)
+
         
         return first_index, last_index
 
     def insert_file(self, path: str, file_id=None) :
-        # text = self.extract_text(path)
         if file_id==None :
             file_id = str(uuid.uuid4())
-        # file_id = str(uuid.uuid4())
-        indices = {}
-        # indices['clip'] = self.insert_into_clip(path, document_id)
-        first_index, last_index = self.insert_into_qa(path, file_id)
 
+        self.insert_into_qa(path, file_id)
         self.commit()
 
-        return file_id, first_index, last_index
+        return file_id
     
     def insert_text(self, text: str) :
         document_id = str(uuid.uuid4())
@@ -152,20 +106,27 @@ class TextPipeline(Pipeline):
             )
         
     def similarity_search(self, query: str, k: int) -> list[int]:
-        '''
-        Returns list of (faiss_id, file_id, path, text_data) and Distances ranked according to distances.
-        
-        '''
-        
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
         D, I = remove_neg_indexes(D, I)
 
-        if(len(I) > 0) :
-            Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
-            return order_by(self.db.execute(Q).fetchall(), I) , D
+        if len(I) > 0:
+            if self.__is_connected:
+                session = self.__db 
+
+                
+                query = session.query(TextRecord).filter(TextRecord.faiss_id.in_(I))
+
+                records = query.all()
+
+                records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
+
+                result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
+
+                return result, D
         else:
             return [], []
+
     
     def image_to_text_search(self, path: str, k:int) :
         query_embedding = { }
