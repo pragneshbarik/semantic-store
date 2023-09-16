@@ -65,6 +65,9 @@ class BaseTextObjects:
 
         return sorted_chunks
 
+    def __repr__(self) :
+        return f'text object containing {len(self.objects)} records'
+
 class TextObjects(BaseTextObjects):
     pass
 

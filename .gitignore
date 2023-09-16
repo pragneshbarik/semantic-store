@@ -1,3 +1,5 @@
 *.faiss
 *.db
 *.pdf
+*.txt
+*.jpeg

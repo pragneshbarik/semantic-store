@@ -21,13 +21,13 @@ class DeletedIds(Base):
 class ImageRecord(Base) :
     __tablename__ = 'image_table'
 
-    faiss_id = Column(String, primary_key=True)
+    faiss_id = Column(Integer, primary_key=True)
     file_id = Column(String)
 
 class TextRecord(Base) :
     __tablename__ = 'text_table'
 
-    faiss_id = Column(String, primary_key=True)
+    faiss_id = Column(Integer, primary_key=True)
     file_id = Column(String)
     text_data = Column(String)
 

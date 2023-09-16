@@ -6,7 +6,7 @@
 
 A simple easy to use vector store for small hobby projects.
 
-A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, this vector store has you covered.
+A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, Semantic has you covered.
 
 ## Features
 

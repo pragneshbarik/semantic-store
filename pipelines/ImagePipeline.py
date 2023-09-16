@@ -14,6 +14,7 @@ from utils import *
 from models import Base, MasterFileRecord, DeletedIds, ImageRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import text
 
 class ImagePipeline :
 
@@ -76,7 +77,6 @@ class ImagePipeline :
         new_record = ImageRecord(
             faiss_id=first_index,
             file_id=file_id,
-            path=path
         )
         self.__db.add(new_record)
 
@@ -108,16 +108,24 @@ class ImagePipeline :
 
 
     def similarity_search(self, q: str, k: int, file: bool = False) -> list[int]:
-        query_embedding = self.model.encode_text(q)
-        D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 512), k)
+        query_embedding = self.encode_text(q)
+        D, I = self.index.search(np.array(query_embedding).reshape(-1, 512), k)
         D, I = remove_neg_indexes(D, I)
+        print(D, I)
 
         if len(I) > 0:
-            session = self.__db
-            query = session.query(ImageRecord).filter(ImageRecord.faiss_id.in_(I))
-            records = query.all()
-            records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
-            result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
-            return result, D
+            raw_sql = text(f'''
+                SELECT *
+                FROM image_table
+                WHERE faiss_id IN ({', '.join(map(str, I))})
+            ''')
+
+            with self.__db_connection.connect() as connection:
+                result = connection.execute(raw_sql).fetchall()
+            
+            print(result)
+            sorted_records = order_by(result, I)
+
+            return sorted_records, D
         else:
             return [], []

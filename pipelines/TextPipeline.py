@@ -14,8 +14,7 @@ from PIL import Image
 from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
-
-import re
+from sqlalchemy import text
 
 
 
@@ -43,7 +42,7 @@ class TextPipeline(Pipeline):
         self.qa_model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
     
     def commit(self) :
-        self.db_connection.commit()
+        self.__db.commit()
         faiss.write_index(self.qa_index, self.qa_faiss_uri)
 
     def fetch_indexes(self, file_id) :
@@ -52,10 +51,7 @@ class TextPipeline(Pipeline):
         result_values = [row[0] for row in res]
         return result_values
 
-       
-
-        
-
+    
     def encode_text(self, sentences: list[str]) -> list[torch.Tensor] | np.ndarray | torch.Tensor:
         embeddings = self.qa_model.encode(sentences)
         return np.array(embeddings).reshape(-1, 384)
@@ -102,28 +98,34 @@ class TextPipeline(Pipeline):
         for i, sentence in enumerate(sentences) :
             self.db.execute(
                 "INSERT INTO qa_text_table (faiss_id, file_id, file_path, text_data) VALUES (?, ?, ?, ?)",
-                (first_index + i, document_id, "source_text", sentence)
+                (first_index + i, document_id, sentence)
             )
         
     def similarity_search(self, query: str, k: int) -> list[int]:
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
         D, I = remove_neg_indexes(D, I)
+        print(D, I)
 
         if len(I) > 0:
-            if self.__is_connected:
-                session = self.__db 
 
-                
-                query = session.query(TextRecord).filter(TextRecord.faiss_id.in_(I))
+            faiss_id_set = set(I)
 
-                records = query.all()
+            raw_sql = text(f'''
+                SELECT *
+                FROM text_table
+                WHERE faiss_id IN ({', '.join(map(str, I))})
+            ''')
 
-                records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
+            # Execute the raw SQL query
+            with self.__db_connection.connect() as connection:
+                result = connection.execute(raw_sql).fetchall()
 
-                result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
+            print(result)
+            sorted_records = order_by(result, I)
 
-                return result, D
+            return sorted_records, D
+
         else:
             return [], []
 
@@ -150,16 +152,6 @@ class TextPipeline(Pipeline):
             return [], []
     
 
-    def text_to_text_search(self, query: str, k: int):
-        query_embedding = self.qa_model.encode([query])
-        D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
-
-        D, I = remove_neg_indexes(D, I)
-
-        Q = f"SELECT * FROM qa_text_table WHERE faiss_id in ({','.join(map(str, I))})"
-
-        return order_by(self.db.execute(Q).fetchall(), I) , D
 
 
-    
-    
+

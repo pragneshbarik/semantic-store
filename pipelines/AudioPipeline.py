@@ -13,8 +13,8 @@ import uuid
 
 
 class AudioPipeline(Pipeline):
-    def __init__(self, faiss_uri: str, sqlite_uri: str) -> None :
-        self.db_connection = sqlite3.connect(sqlite_uri)
+    def __init__(self, faiss_uri: str, sql_uri: str) -> None :
+        self.db_connection = sqlite3.connect(sql_uri)
         self.db = self.db_connection.cursor()
         
         

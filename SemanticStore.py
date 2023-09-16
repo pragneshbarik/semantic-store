@@ -11,7 +11,7 @@ from pipelines.AudioPipeline import AudioPipeline
 from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
-
+from sqlalchemy import text as textQuery
 
 
 class Store:
@@ -64,7 +64,17 @@ class Store:
 
             image_objects = []
             for image, dist in zip(images, distances):
-                image_object = ImageObject(image[1], image[2], dist)
+                uuid = image[1]
+
+                raw_sql = textQuery(f'''
+                SELECT file_path FROM master_file_record WHERE uuid='{uuid}'
+                ''')
+
+                with self.__db_connection.connect() as connection :
+                    file_path = connection.execute(raw_sql).fetchone()
+
+
+                image_object = ImageObject(image[1], file_path[0], dist)
                 image_objects.append(image_object)
 
         return image_objects
@@ -77,13 +87,20 @@ class Store:
             texts.append(list(text) + [d])
         
         texts_dict = defaultdict(list)
-        for text in texts :
+        for text    in texts :
             texts_dict[text[1]].append(text)
 
         text_objects = []
 
         for uuid in texts_dict :
-            text_object = TextObject(uuid, texts_dict[uuid][0][2], [], [])
+            raw_sql = textQuery(f'''
+                SELECT file_path FROM master_file_record WHERE uuid='{uuid}'
+            ''')
+
+            with self.__db_connection.connect() as connection :
+                file_path = connection.execute(raw_sql).fetchone()
+            
+            text_object = TextObject(uuid, file_path[0], [], [])
             for text in texts_dict[uuid] :
                 text_object.chunks.append(text[3])
                 text_object.distances.append(text[4])
@@ -146,10 +163,12 @@ class Store:
 
         if 'image' in modals :
             image_objects = self._text_to_image_search(q, k)
+            print(image_objects)
             s.images = image_objects
         
         if 'text' in modals :
             text_objects = self._text_to_text_search(q, k)
+
             s.texts = text_objects
 
         if 'audio' in modals :
@@ -198,7 +217,7 @@ class Store:
 
         file_id = str(uuid.uuid4())
         pipeline = self.__pipelines[modality]
-        file_id, first_index, last_index = pipeline.insert_file(path, file_id)
+        file_id = pipeline.insert_file(path, file_id)
         
 
         self.__insert_into_master_file_record(file_id, path, modality)
@@ -231,7 +250,7 @@ class Store:
                 pipeline = self.__pipelines[modality]
                 file_id, first_index, last_index = pipeline.insert_file(temp_filename, file_id)
 
-                self.__sql_insert_into_master_file_record(file_id, uri, modality, first_index, last_index)
+                self.__insert_into_master_file_record(file_id, uri, modality)
                 os.remove(temp_filename)
                 return file_id
                 
@@ -280,13 +299,18 @@ class Store:
 
 # import Store from SemanticStore
 
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+
 store = Store()
-store.connect('some3.db')
+store.connect('some4.db')
 # store.insert('https://images.pexels.com/photos/3617500/pexels-photo-3617500.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')
 # store.insert('gita.txt')
 store.commit()
 
-res = store.search(q="what is meaning of life accoring to gita", k=1, modals=['text'])
+res = store.search(q="what is meaning of life accoring to gita", k=10, modals=['text', 'image'])
 # res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
 print(res)
