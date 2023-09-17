@@ -248,7 +248,7 @@ class Store:
                     return
 
                 pipeline = self.__pipelines[modality]
-                file_id, first_index, last_index = pipeline.insert_file(temp_filename, file_id)
+                file_id = pipeline.insert_file(temp_filename, file_id)
 
                 self.__insert_into_master_file_record(file_id, uri, modality)
                 os.remove(temp_filename)
@@ -310,7 +310,7 @@ store.connect('some4.db')
 # store.insert('gita.txt')
 store.commit()
 
-res = store.search(q="what is meaning of life accoring to gita", k=10, modals=['text', 'image'])
+res = store.search(q="what is meaning fof life accoring to gita", k=10, modals=['text', 'image'])
 # res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
 print(res)

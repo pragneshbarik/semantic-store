@@ -96,12 +96,19 @@ class ImagePipeline :
             D, I = remove_neg_indexes(D, I)
 
             if len(I) > 0:
-                session = self.__db
-                query = session.query(ImageRecord).filter(ImageRecord.faiss_id.in_(I))
-                records = query.all()
-                records_sorted = sorted(records, key=lambda record: I.index(record.faiss_id))
-                result = [(record.faiss_id, record.file_id, record.text_data) for record in records_sorted]
-                return result, D
+                raw_sql = text(f'''
+                SELECT *
+                FROM image_table
+                WHERE faiss_id IN ({', '.join(map(str, I))})
+                ''')
+
+                with self.__db_connection.connect() as connection:
+                    result = connection.execute(raw_sql).fetchall()
+            
+                print(result)
+                sorted_records = order_by(result, I)
+
+                return sorted_records, D
             else:
                 return [], []
 
