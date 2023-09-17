@@ -32,6 +32,15 @@ class TextRecord(Base) :
     text_data = Column(String)
 
 
+class AudioRecord(Base) :
+    __tablename__ = 'audio_table'
+
+    faiss_id = Column(Integer, primary_key=True)
+    file_id = Column(String)
+    text_data = Column(String)
+
+
+
 
 
 # # class Store:
