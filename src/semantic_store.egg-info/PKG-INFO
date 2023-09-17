@@ -22,7 +22,7 @@
 
 A simple easy to use vector store for small hobby projects.
 
-A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, SemanticStore has you covered.
+A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, Semantic has you covered.
 
 ## Features
 
@@ -33,12 +33,12 @@ A  versatile vector store designed for multimodal search. This store seamlessly 
 
 ## Getting Started
 
-Follow these steps to get started with the SemanticStore:
+Follow these steps to get started with the Multimodal Vector Store:
 
-1. **Install into environment**
+1. **Clone the Repository**
 
-   ```python
-   pip install semantic-store
+   ```shell
+   git clone https://github.com/pragneshbarik/semantic-store.git
 
 2. **Install requirements.txt**
    ```shell

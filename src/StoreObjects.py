@@ -35,6 +35,7 @@ class FileObject:
     file_type : str
 
 
+@dataclass
 class BaseTextObjects:
     def __init__(self, objects):
         self.objects = objects
@@ -65,8 +66,7 @@ class BaseTextObjects:
 
         return sorted_chunks
 
-    def __repr__(self) :
-        return f'text object containing {len(self.objects)} records'
+    
 
 class TextObjects(BaseTextObjects):
     pass

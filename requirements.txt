@@ -1,7 +1,6 @@
 certifi==2023.7.22
 charset-normalizer==3.2.0
 click==8.1.7
-clip @ git+https://github.com/openai/CLIP.git@a1d071733d7111c9c014f024669f959182114e33
 colorama==0.4.6
 faiss-cpu==1.7.4
 ffmpeg-python==0.2.0

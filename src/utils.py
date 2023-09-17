@@ -96,12 +96,11 @@ def split_text(text, chunk_size=256):
     """
     pattern = r'[^a-zA-Z0-9\s]'
     text_cleaned = re.sub(pattern, '', text)
-    tokens = nltk.word_tokenize(text_cleaned)
-    filtered_tokens = [word for word in tokens if word.lower() not in stopwords.words('english')]
+    tokens = text_cleaned.split()
     chunks = []
     current_chunk = []
     max_tokens_per_chunk = chunk_size
-    for token in filtered_tokens:
+    for token in tokens:
         if len(current_chunk) + len(nltk.word_tokenize(token)) <= max_tokens_per_chunk:
             current_chunk.append(token)
         else:
@@ -138,3 +137,4 @@ def transcribe(path: str) :
     
     extracted_text = " ".join(text_segments)
     return extracted_text
+

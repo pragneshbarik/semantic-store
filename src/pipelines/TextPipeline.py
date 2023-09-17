@@ -23,6 +23,7 @@ class TextPipeline(Pipeline):
     def __init__(self, faiss_uri: str, sql_uri: str) -> None :
 
         self.chunk_size = 256 # word chunk size
+        self.faiss_uri = faiss_uri
         self.__db_connection = create_engine('sqlite:///' + sql_uri)
         Session = sessionmaker(bind=self.__db_connection)
         self.__db = Session()
@@ -147,6 +148,9 @@ class TextPipeline(Pipeline):
             return order_by(self.db.execute(Q).fetchall(), I) , D
         else:
             return [], []
+    
+
+
     
 
 

@@ -83,7 +83,7 @@ class ImagePipeline :
 
         self.commit()
 
-        return file_id, first_index, first_index
+        return file_id
 
     def image_to_image_search(self, path: str, k: int) :
         file_ext = path.split('.')[-1]

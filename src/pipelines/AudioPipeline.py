@@ -10,7 +10,7 @@ import faiss
 import torch
 from utils import *
 import uuid
-from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord, AudioRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text
@@ -32,7 +32,7 @@ class AudioPipeline(Pipeline):
             faiss.write_index(self.index, faiss_uri)
 
         self.faiss_uri = faiss_uri
-        self.whisper_model = whisper.load_model('tiny.en')
+        Base.metadata.create_all(self.__db_connection)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
     
@@ -55,7 +55,7 @@ class AudioPipeline(Pipeline):
         last_index = self.index.ntotal
 
         for i, sentence in enumerate(sentences) :
-            new_record = TextRecord(
+            new_record = AudioRecord(
                 faiss_id=first_index + i,
                 file_id=file_id,
                 text_data=sentence
@@ -82,13 +82,12 @@ class AudioPipeline(Pipeline):
         query_embedding = self.model.encode([query])
         D, I = self.index.search(np.array(query_embedding).reshape(-1, 384), k)
         D, I = remove_neg_indexes(D, I)
-        print(D, I)
 
         if len(I) > 0:
 
             raw_sql = text(f'''
                 SELECT *
-                FROM text_table
+                FROM audio_table
                 WHERE faiss_id IN ({', '.join(map(str, I))})
             ''')
 
@@ -96,7 +95,6 @@ class AudioPipeline(Pipeline):
             with self.__db_connection.connect() as connection:
                 result = connection.execute(raw_sql).fetchall()
 
-            print(result)
             sorted_records = order_by(result, I)
 
             return sorted_records, D

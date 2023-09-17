@@ -28,10 +28,11 @@ class Store:
 
         text_index = base_uri + '_text.faiss'
         image_index = base_uri + '_image.faiss'
+        audio_index = base_uri + '_audio.faiss'
 
         self.__image_pipeline = ImagePipeline(faiss_uri=image_index, sql_uri=sql_uri)
         self.__text_pipeline = TextPipeline(faiss_uri=text_index, sql_uri=sql_uri)
-        self.__audio_pipeline = AudioPipeline(faiss_uri=text_index, sql_uri=sql_uri)
+        self.__audio_pipeline = AudioPipeline(faiss_uri=audio_index, sql_uri=sql_uri)
 
         self.__pipelines = {
             "image" : self.__image_pipeline,
@@ -87,7 +88,7 @@ class Store:
             texts.append(list(text) + [d])
         
         texts_dict = defaultdict(list)
-        for text    in texts :
+        for text in texts :
             texts_dict[text[1]].append(text)
 
         text_objects = []
@@ -99,15 +100,16 @@ class Store:
 
             with self.__db_connection.connect() as connection :
                 file_path = connection.execute(raw_sql).fetchone()
-            
+            # print(file_path)
             text_object = TextObject(uuid, file_path[0], [], [])
             for text in texts_dict[uuid] :
-                text_object.chunks.append(text[3])
-                text_object.distances.append(text[4])
+                text_object.chunks.append(text[2])
+                text_object.distances.append(text[3])
             
             text_objects.append(text_object)
         
-        return text_objects
+
+        return TextObjects(text_objects)
             
 
     def _text_to_audio_search(self, q: str, k: int) :
@@ -128,12 +130,12 @@ class Store:
         for uuid in audio_dict :
             audio_object = AudioObject(uuid, audio_dict[uuid][0][2], [], [])
             for audio in audio_dict[uuid] :
-                audio_object.chunks.append(audio[3])
-                audio_object.distances.append(audio[4])
+                audio_object.chunks.append(audio[2])
+                audio_object.distances.append(audio[3])
             
             audio_objects.append(audio_object)
         
-        return audio_objects
+        return AudioObjects(audio_objects)
 
     def _image_to_image_search(self, path: str, k:int) :
         images, distances = self.__image_pipeline.image_to_image_search(path, k)
@@ -163,7 +165,7 @@ class Store:
 
         if 'image' in modals :
             image_objects = self._text_to_image_search(q, k)
-            print(image_objects)
+            # print(image_objects)
             s.images = image_objects
         
         if 'text' in modals :
@@ -296,29 +298,4 @@ class Store:
 
 
 
-
-# import Store from SemanticStore
-
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
-
-store = Store()
-store.connect('some4.db')
-# store.insert('https://images.pexels.com/photos/3617500/pexels-photo-3617500.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')
-# store.insert('gita.txt')
-store.commit()
-
-res = store.search(q="what is meaning fof life accoring to gita", k=10, modals=['text', 'image'])
-# res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
-
-print(res)
-
-# image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='image.db')
-# image_pipeline.insert_file('cat.jpg')
-
-# image_pipeline.commit()
-# res = image_pipeline.similarity_search(q="a dog", k=1);
-# print(res);
 
