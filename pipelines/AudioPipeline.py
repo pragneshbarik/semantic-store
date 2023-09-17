@@ -20,7 +20,6 @@ from sqlalchemy import text
 class AudioPipeline(Pipeline):
     def __init__(self, faiss_uri: str, sql_uri: str) -> None :
         self.chunk_size = 256 # word chunk size
-        self.qa_faiss_uri = "qa_" + faiss_uri
         self.__db_connection = create_engine('sqlite:///' + sql_uri)
         Session = sessionmaker(bind=self.__db_connection)
         self.__db = Session()
@@ -46,10 +45,9 @@ class AudioPipeline(Pipeline):
         embeddings = self.model.encode(sentences)
         return np.array(embeddings).reshape(-1, 384)
 
-    def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
-        extracted_text = self.whisper_model.transribe(path)
-        extracted_text = extracted_text['text']
 
+    def insert_into_qa(self, path: str, file_id: str) -> [int, int]:
+        extracted_text = transcribe(path)
         sentences = split_text(extracted_text)
         embeddings = self.encode_text(sentences)
         first_index = self.index.ntotal
@@ -74,8 +72,6 @@ class AudioPipeline(Pipeline):
         self.insert_into_qa(path, file_id)
         self.commit()
         return file_id 
-    
-
 
     def similarity_search(self, query: str, k: int) -> list[int]:
         '''

@@ -3,6 +3,11 @@ import nltk
 import numpy as np
 from PyPDF2 import PdfReader
 from nltk.corpus import stopwords
+from faster_whisper import WhisperModel
+import torch
+whisper_model_size = "tiny.en"
+whisper_model = WhisperModel(whisper_model_size, device="cpu", compute_type="int8")
+
 
 nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
 nltk.download('stopwords')  # Ensure that stop words are downloaded
@@ -121,3 +126,15 @@ def remove_neg_indexes(D: np.ndarray, I: np.ndarray):
     D = D[I >= 0]
     I = I[I >= 0]
     return list(D), list(I)
+
+def transcribe(path: str) :
+    segments, info = whisper_model.transcribe(path, beam_size=5)
+    text_segments = []
+
+    for segment in segments:
+        segment.start
+        segment.end
+        text_segments.append(segment.text)
+    
+    extracted_text = " ".join(text_segments)
+    return extracted_text

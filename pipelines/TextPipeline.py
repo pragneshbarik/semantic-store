@@ -23,7 +23,6 @@ class TextPipeline(Pipeline):
     def __init__(self, faiss_uri: str, sql_uri: str) -> None :
 
         self.chunk_size = 256 # word chunk size
-        self.qa_faiss_uri = "qa_" + faiss_uri
         self.__db_connection = create_engine('sqlite:///' + sql_uri)
         Session = sessionmaker(bind=self.__db_connection)
         self.__db = Session()
@@ -31,11 +30,11 @@ class TextPipeline(Pipeline):
     
         
         try :
-            self.qa_index = faiss.read_index(self.qa_faiss_uri)
+            self.qa_index = faiss.read_index(self.faiss_uri)
         
         except RuntimeError:
             self.qa_index = faiss.IndexFlatL2(384)
-            faiss.write_index(self.qa_index, self.qa_faiss_uri)
+            faiss.write_index(self.qa_index, self.faiss_uri)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -43,7 +42,7 @@ class TextPipeline(Pipeline):
     
     def commit(self) :
         self.__db.commit()
-        faiss.write_index(self.qa_index, self.qa_faiss_uri)
+        faiss.write_index(self.qa_index, self.faiss_uri)
 
     def fetch_indexes(self, file_id) :
         query = self.__db.query(TextRecord.faiss_id).filter_by(file_id=file_id) 
@@ -108,8 +107,6 @@ class TextPipeline(Pipeline):
         print(D, I)
 
         if len(I) > 0:
-
-            faiss_id_set = set(I)
 
             raw_sql = text(f'''
                 SELECT *
