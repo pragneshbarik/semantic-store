@@ -1,4 +1,5 @@
 import os
+import uuid
 import requests
 import sqlite3
 from utils import * 
@@ -7,82 +8,99 @@ from collections import defaultdict
 from pipelines.TextPipeline import TextPipeline
 from pipelines.ImagePipeline import ImagePipeline
 from pipelines.AudioPipeline import AudioPipeline
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import text as textQuery
 
 
 class Store:
     def __init__(self) :
         self.__is_connected = False
-        
+        self.__db_connection = None
+        self.__db = None
 
     
     def connect(self, store_uri: str) :
-        sql_uri = store_uri.split('.')[0]  + ".db"
-        self.db_connection = sqlite3.connect(sql_uri)
-        self.db = self.db_connection.cursor()
+        base_uri = store_uri.split('.')[0]
+        sql_uri = base_uri + '.db' 
 
 
-        text_index = sql_uri + '_text.faiss'
-        image_index = sql_uri + '_image.faiss'
+        text_index = base_uri + '_text.faiss'
+        image_index = base_uri + '_image.faiss'
 
-        self.image_pipeline = ImagePipeline(faiss_uri=image_index, sqlite_uri=sql_uri)
-        self.text_pipeline = TextPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
-        self.audio_pipeline = AudioPipeline(faiss_uri=text_index, sqlite_uri=sql_uri)
+        self.__image_pipeline = ImagePipeline(faiss_uri=image_index, sql_uri=sql_uri)
+        self.__text_pipeline = TextPipeline(faiss_uri=text_index, sql_uri=sql_uri)
+        self.__audio_pipeline = AudioPipeline(faiss_uri=text_index, sql_uri=sql_uri)
 
-        self.pipelines = {
-            "image" : self.image_pipeline,
-            "text" : self.text_pipeline,
-            "audio" : self.audio_pipeline
+        self.__pipelines = {
+            "image" : self.__image_pipeline,
+            "text" : self.__text_pipeline,
+            "audio" : self.__audio_pipeline
         }
+
+        self.__db_connection = create_engine('sqlite:///' + sql_uri)
+        Session = sessionmaker(bind=self.__db_connection)
+        self.__db = Session()
 
         self.__is_connected = True
 
-        self.db.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS master_file_record (
-            uuid TEXT PRIMARY KEY,
-            file_path TEXT,
-            file_type TEXT,
-            faiss_start_index TEXT,
-            faiss_end_index TEXT
-        )
-        '''
-)
-
+        Base.metadata.create_all(self.__db_connection)
 
         self.commit()
 
 
     def multimodal_search(self, path: str, k: int, left: str, right: str) :
         pass
+
+    # def _text_to_text_search(self, q:str, k: int) :
+    #     self.pipelines['text'].similarity_search(q, k)
     
 
-    def text_to_image_search(self, q:str, k: int) :
+    def _text_to_image_search(self, q:str, k: int) :
 
         if(len(split_text(q))<50) :
-            images, distances = self.image_pipeline.similarity_search(q, k)
+            images, distances = self.__image_pipeline.similarity_search(q, k)
 
             image_objects = []
             for image, dist in zip(images, distances):
-                image_object = ImageObject(image[1], image[2], dist)
+                uuid = image[1]
+
+                raw_sql = textQuery(f'''
+                SELECT file_path FROM master_file_record WHERE uuid='{uuid}'
+                ''')
+
+                with self.__db_connection.connect() as connection :
+                    file_path = connection.execute(raw_sql).fetchone()
+
+
+                image_object = ImageObject(image[1], file_path[0], dist)
                 image_objects.append(image_object)
 
         return image_objects
     
-    def text_to_text_search(self, q: str, k:int) :
-        temp_texts, distances = self.text_pipeline.similarity_search(q, k)
+    def _text_to_text_search(self, q: str, k:int) :
+        temp_texts, distances = self.__text_pipeline.similarity_search(q, k)
                 
         texts = []
         for text, d in zip(temp_texts, list(distances)) :
             texts.append(list(text) + [d])
         
         texts_dict = defaultdict(list)
-        for text in texts :
+        for text    in texts :
             texts_dict[text[1]].append(text)
 
         text_objects = []
 
         for uuid in texts_dict :
-            text_object = TextObject(uuid, texts_dict[uuid][0][2], [], [])
+            raw_sql = textQuery(f'''
+                SELECT file_path FROM master_file_record WHERE uuid='{uuid}'
+            ''')
+
+            with self.__db_connection.connect() as connection :
+                file_path = connection.execute(raw_sql).fetchone()
+            
+            text_object = TextObject(uuid, file_path[0], [], [])
             for text in texts_dict[uuid] :
                 text_object.chunks.append(text[3])
                 text_object.distances.append(text[4])
@@ -92,8 +110,8 @@ class Store:
         return text_objects
             
 
-    def text_to_audio_search(self, q: str, k: int) :
-        temp_audios, distances = self.audio_pipeline.similarity_search(q, k)
+    def _text_to_audio_search(self, q: str, k: int) :
+        temp_audios, distances = self.__audio_pipeline.similarity_search(q, k)
                 
         audios = []
         for audio, d in zip(temp_audios, list(distances)) :
@@ -117,18 +135,25 @@ class Store:
         
         return audio_objects
 
-    def image_to_image_search(self, path: str, k:int) :
+    def _image_to_image_search(self, path: str, k:int) :
+        images, distances = self.__image_pipeline.image_to_image_search(path, k)
+
+        image_objects = []
+        for image, dist in zip(images, distances):
+            image_object = ImageObject(image[1], image[2], dist)
+            image_objects.append(image_object)
+        
+        return image_objects
+
+    def _audio_to_text_search(self, path: str, k:int) :
         pass
 
-    def audio_to_text_search(self, path: str, k:int) :
+
+
+    def _audio_to_image_search(self, path: str, k: int):
         pass
 
-
-
-    def audio_to_image_search(self, path: str, k: int):
-        pass
-
-    def audio_to_audio_search(self, path: str, k: int) :
+    def _audio_to_audio_search(self, path: str, k: int) :
         pass
 
     
@@ -137,15 +162,18 @@ class Store:
         s = StoreObject()
 
         if 'image' in modals :
-            image_objects = self.text_to_image_search(q, k)
+            image_objects = self._text_to_image_search(q, k)
+            print(image_objects)
             s.images = image_objects
         
         if 'text' in modals :
-            text_objects = self.text_to_text_search(q, k)
+            text_objects = self._text_to_text_search(q, k)
+
             s.texts = text_objects
 
         if 'audio' in modals :
-            pass
+            audio_objects = self._text_to_audio_search(q, k)
+            s.audios = audio_objects
             
         
         return s;
@@ -162,7 +190,19 @@ class Store:
         else:
             return "unsupported"  # Modify as needed for your specific use case
 
-    def insert(self, path: str):
+    def __insert_into_master_file_record(self, file_id, file_path, modality):
+        if self.__is_connected:
+            record = MasterFileRecord(
+                uuid=file_id,
+                file_path=file_path,
+                file_type=modality,
+            )
+            self.__db.add(record)
+            self.commit()
+
+
+
+    def __insert_local(self, path: str) :
         if not self.__is_connected:
             print("Not connected to the database. Call connect() first.")
             return
@@ -170,75 +210,75 @@ class Store:
        
         modality = self.__determine_modality(path)
 
-        if modality not in self.pipelines:
+
+        if modality not in self.__pipelines:
             print("Unsupported modality.")
             return
 
-        pipeline = self.pipelines[modality]
-        res = ""
+        file_id = str(uuid.uuid4())
+        pipeline = self.__pipelines[modality]
+        file_id = pipeline.insert_file(path, file_id)
+        
 
+        self.__insert_into_master_file_record(file_id, path, modality)
+        return file_id;
 
-        if modality == "text":
-            # Insert image data into the image pipeline
-            file_id, first_index, last_index = pipeline.insert_file(path)
-            self.db.execute(
-                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
-                 (file_id, path, "text", first_index, last_index)               
-            )
-            res = file_id
-            
-        elif modality == "image":
-            file_id, first_index = pipeline.insert_file(path)
-            self.db.execute(
-                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
-                (file_id, path, "image", first_index, first_index)
-            )
-            res = file_id
-
-            
-        elif modality == "audio":
-            file_id, first_index, last_index = pipeline.insert_file(path)
-
-            self.db.execute(
-                "INSERT INTO master_file_record (uuid, file_path, file_type, faiss_start_index, faiss_end_index) VALUES (?, ?, ?, ?, ?)",
-                (file_id, path, "audio", first_index, last_index)
-            )
-            res = file_id
-
-            
-        else:
-            raise FileNotFoundError(path)
-        self.commit()
-        return res;
-
-    def insert_remote(self, uri: str):
+   
+    def __insert_remote(self, uri: str):
         try:
             response = requests.get(uri)
             if response.status_code == 200:
-                # Create a temporary file to store the remote content
-                temp_filename = "temp_file"  # You can generate a unique filename here
-                with open(temp_filename, "wb") as temp_file:
+                file_id = str(uuid.uuid4())
+                content_type = response.headers.get('content-type')
+                
+                if content_type:
+                    file_extension = content_type.split('/')[-1]
+                else:
+                    file_extension = os.path.splitext(uri)[1].strip('.')
+                
+                temp_filename = file_id + '.' + file_extension
+                
+                with open(temp_filename, 'wb') as temp_file:
                     temp_file.write(response.content)
+                
+                modality = self.__determine_modality(temp_filename)
+                
+                if modality not in self.__pipelines:
+                    print("Unsupported modality.")
+                    return
 
-                # Insert the temporary file based on its modality
-                inserted_file_id = self.insert(temp_filename)
+                pipeline = self.__pipelines[modality]
+                file_id = pipeline.insert_file(temp_filename, file_id)
 
-                # Remove the temporary file
+                self.__insert_into_master_file_record(file_id, uri, modality)
                 os.remove(temp_filename)
-
-                return inserted_file_id
+                return file_id
+                
             else:
                 print("Failed to fetch remote file. Status code:", response.status_code)
                 return None
         except Exception as e:
             print("Error inserting remote file:", str(e))
             return None
+
+
+    def insert(self, path: str):
+        if path.startswith(('http://', 'https://', 'ftp://')):  
+            return self.__insert_remote(path)
+        else:
+            return self.__insert_local(path)
+
+
+
     
-    def get(self, uuid: str) :
-        q = f"SELECT * FROM master_file_record WHERE uuid = '{uuid}'"
-        res = self.db.execute(q).fetchone()
-        f = FileObject(res[0], res[1], res[2])
-        return f;
+    def get(self, uuid: str):
+        if self.__is_connected:
+            result = self.__db.query(MasterFileRecord).filter_by(uuid=uuid).first()
+            if result:
+                f = FileObject(result.uuid, result.file_path, result.file_type)
+                return f
+            else:
+                return None  # 
 
     def delete(self, uuid: str) :
         pass    
@@ -246,23 +286,39 @@ class Store:
 
 
     def commit(self) :
-        self.image_pipeline.commit()
-        self.audio_pipeline.commit()
-        self.text_pipeline.commit()
-        self.db_connection.commit()
+        self.__image_pipeline.commit()
+        self.__audio_pipeline.commit()
+        self.__text_pipeline.commit()
+        self.__db.commit()
 
-    def sql(self) :
-        return self.db
+    def _db(self) :
+        return self.__db
 
 
 
 
 # import Store from SemanticStore
 
-s = Store()
-s.connect('some2.db')
-s.insert('gita.txt')
-s.commit()
-res = s.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+
+store = Store()
+store.connect('some4.db')
+# store.insert('https://images.pexels.com/photos/3617500/pexels-photo-3617500.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1')
+# store.insert('gita.txt')
+store.commit()
+
+res = store.search(q="what is meaning fof life accoring to gita", k=10, modals=['text', 'image'])
+# res = store.search("what is meaning of life according to gita ?", 5, modals=['text', 'image'])
 
 print(res)
+
+# image_pipeline = ImagePipeline(faiss_uri='image.faiss', sqlite_uri='image.db')
+# image_pipeline.insert_file('cat.jpg')
+
+# image_pipeline.commit()
+# res = image_pipeline.similarity_search(q="a dog", k=1);
+# print(res);
+

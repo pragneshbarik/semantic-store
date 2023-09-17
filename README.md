@@ -22,7 +22,7 @@
 
 A simple easy to use vector store for small hobby projects.
 
-A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, this vector store has you covered.
+A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, Semantic has you covered.
 
 ## Features
 
@@ -66,7 +66,7 @@ SemanticStore uses various state-of-the-art models to process text, images and a
 | Image         |            CLIP           |           _BLIP_          | _multi-qa-MiniLM-L6-cos-v1_ |              -              |
 | _Video_       |         _Whisper_         |           _CLIP_          |            _BLIP_           | _multi-qa-MiniLM-L6-cos-v1_ |
 
-**Note** : Models in _Italics_ are still to be implemented.
+**Note** : Models and pipeines in _Italics_ are still to be implemented.
 
 ## Contributing
 Contributions are welcome! If you'd like to enhance the SemanticStore or fix issues, please follow these steps:

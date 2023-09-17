@@ -2,38 +2,28 @@
 from pipelines.BasePipeline import Pipeline
 import pipelines.TextPipeline as TextPipeline
 import whisper
-import re
 import torch
 import numpy as np
-import time
-from abc import ABC, abstractmethod
 import sqlite3
 from sentence_transformers import SentenceTransformer
 import faiss
-import os
 import torch
-import clip
-from PIL import Image
+from utils import *
 import uuid
-from PyPDF2 import PdfReader
+from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import text
+
 
 
 class AudioPipeline(Pipeline):
-    def __init__(self, faiss_uri: str, sqlite_uri: str) -> None :
-        self.db_connection = sqlite3.connect(sqlite_uri)
-        self.db = self.db_connection.cursor()
-        
-        
-        self.db.execute('''
-            CREATE TABLE IF NOT EXISTS text_table (
-                faiss_id INTEGER PRIMARY KEY,
-                file_id TEXT,
-                path TEXT,
-                text_data TEXT        
-            )
-        ''')
-
-        self.db_connection.commit()
+    def __init__(self, faiss_uri: str, sql_uri: str) -> None :
+        self.chunk_size = 256 # word chunk size
+        self.qa_faiss_uri = "qa_" + faiss_uri
+        self.__db_connection = create_engine('sqlite:///' + sql_uri)
+        Session = sessionmaker(bind=self.__db_connection)
+        self.__db = Session()
         
         try :
             self.index = faiss.read_index(faiss_uri)
@@ -44,10 +34,11 @@ class AudioPipeline(Pipeline):
 
         self.faiss_uri = faiss_uri
         self.whisper_model = whisper.load_model('tiny.en')
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
     
     def commit(self) :
-        self.db_connection.commit()
+        self.__db.commit()
         faiss.write_index(self.index, self.faiss_uri)
 
 
@@ -59,26 +50,30 @@ class AudioPipeline(Pipeline):
         extracted_text = self.whisper_model.transribe(path)
         extracted_text = extracted_text['text']
 
-        sentences = TextPipeline.split_text(extracted_text)
+        sentences = split_text(extracted_text)
         embeddings = self.encode_text(sentences)
         first_index = self.index.ntotal
         self.index.add(embeddings)
         last_index = self.index.ntotal
 
         for i, sentence in enumerate(sentences) :
-            self.db.execute(
-                "INSERT INTO text_table (faiss_id, file_id, path, text_data) VALUES (?, ?, ?, ?)",
-                (first_index + i, file_id, path, sentence)
+            new_record = TextRecord(
+                faiss_id=first_index + i,
+                file_id=file_id,
+                text_data=sentence
             )
+            self.__db.add(new_record)
 
+        
         return first_index, last_index
     
 
-    def insert_file(self, path: str) -> tuple :
-        file_id = str(uuid.uuid4())
-        first_index, last_index = self.insert_into_qa(path, file_id)
+    def insert_file(self, path: str, file_id=None) -> tuple :
+        if file_id == None :
+            file_id = str(uuid.uuid4())
+        self.insert_into_qa(path, file_id)
         self.commit()
-        return file_id, first_index, last_index
+        return file_id 
     
 
 
@@ -90,11 +85,25 @@ class AudioPipeline(Pipeline):
         
         query_embedding = self.model.encode([query])
         D, I = self.index.search(np.array(query_embedding).reshape(-1, 384), k)
-
-
-        faiss_indices = list(I[0])
+        D, I = remove_neg_indexes(D, I)
         print(D, I)
 
-        Q = f"SELECT * FROM text_table WHERE faiss_id in ({','.join(map(str, faiss_indices))})"
+        if len(I) > 0:
 
-        return self.db.execute(Q).fetchall() , D
+            raw_sql = text(f'''
+                SELECT *
+                FROM text_table
+                WHERE faiss_id IN ({', '.join(map(str, I))})
+            ''')
+
+            # Execute the raw SQL query
+            with self.__db_connection.connect() as connection:
+                result = connection.execute(raw_sql).fetchall()
+
+            print(result)
+            sorted_records = order_by(result, I)
+
+            return sorted_records, D
+
+        else:
+            return [], []
