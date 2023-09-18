@@ -37,7 +37,7 @@ class FileObject:
 
 @dataclass
 class BaseTextObjects:
-    def __init__(self, objects):
+    def __init__(self, objects=[]):
         self.objects = objects
         self.index = 0
 
@@ -69,13 +69,16 @@ class BaseTextObjects:
     
 
 class TextObjects(BaseTextObjects):
-    pass
+    def __repr__(self) :
+        return f"TextObjects containing {len(self.objects)} documents and {len(self.chunks())} chunks"
 
 class AudioObjects(BaseTextObjects):
-    pass
+    def __repr__(self) :
+        return f"AudioObjects containing {len(self.objects)} documents and {len(self.chunks())} chunks"
+
 
 class ImageObjects:
-    def __init__(self, image_objects: List[ImageObject]):
+    def __init__(self, image_objects: List[ImageObject] = []):
         self.image_objects = image_objects
         self.index = 0
 
@@ -88,3 +91,8 @@ class ImageObjects:
             self.index += 1
             return current_image_object
         raise StopIteration
+    
+    def __repr__(self) -> str:
+        return f"ImageObjects containing {len(self.objects)} documents"
+
+    

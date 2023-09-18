@@ -2,15 +2,11 @@ import re
 import nltk
 import numpy as np
 from PyPDF2 import PdfReader
-from nltk.corpus import stopwords
 from faster_whisper import WhisperModel
-import torch
 whisper_model_size = "tiny.en"
 whisper_model = WhisperModel(whisper_model_size, device="cpu", compute_type="int8")
 
 
-nltk.download('punkt')  # Ensure that the punkt tokenizer is downloaded
-nltk.download('stopwords')  # Ensure that stop words are downloaded
 
 def order_by(records, order):
     """
