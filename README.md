@@ -59,7 +59,7 @@ store = Store()
 store.connect('semantic.db')
 store.insert('knowledge_base.txt')
 store.commit()
-res = store.search("what is meaning of life according to knowledge base ?", top_k = 5, modals=['text', 'image'])
+res = store.search("what is meaning of life according to knowledge base ?", 5, modals=['text', 'image'])
 print(res)
 ```
 
@@ -166,7 +166,6 @@ To learn more click [here](https://whimsical.com/semantic-search-design-UzzALRbC
 
 * If you are a senior and find this project interesting and have suggestions please mail me, suggestions will be greatly appreciated.
 
-<iframe style="border:none" width="800" height="450" src="https://whimsical.com/embed/UzzALRbCvcUKqyPuGpAgeY@7YNFXnKbYjLguFP2FRour"></iframe>
 
 ## Models
 SemanticStore uses various state-of-the-art models to process text, images and audio.
