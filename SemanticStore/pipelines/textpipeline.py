@@ -1,6 +1,6 @@
 
 import re
-from pipelines.BasePipeline import Pipeline
+from SemanticStore.pipelines.basepipeline import Pipeline
 import torch
 import numpy as np
 import sqlite3
@@ -9,9 +9,9 @@ import faiss
 import torch
 import clip
 import uuid
-from utils import *
+from SemanticStore.utils import *
 from PIL import Image
-from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text
@@ -105,7 +105,6 @@ class TextPipeline(Pipeline):
         query_embedding = self.qa_model.encode([query])
         D, I = self.qa_index.search(np.array(query_embedding).reshape(-1, 384), k)
         D, I = remove_neg_indexes(D, I)
-        print(D, I)
 
         if len(I) > 0:
 
@@ -119,7 +118,6 @@ class TextPipeline(Pipeline):
             with self.__db_connection.connect() as connection:
                 result = connection.execute(raw_sql).fetchall()
 
-            print(result)
             sorted_records = order_by(result, I)
 
             return sorted_records, D

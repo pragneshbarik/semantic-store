@@ -2,13 +2,13 @@ import os
 import uuid
 import requests
 import sqlite3
-from utils import * 
-from StoreObjects import *
+from SemanticStore.utils import * 
+from SemanticStore.StoreObjects import *
 from collections import defaultdict
-from pipelines.TextPipeline import TextPipeline
-from pipelines.ImagePipeline import ImagePipeline
-from pipelines.AudioPipeline import AudioPipeline
-from models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from SemanticStore.pipelines.textpipeline import TextPipeline
+from SemanticStore.pipelines.imagepipeline import ImagePipeline
+from SemanticStore.pipelines.audiopipeline import AudioPipeline
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text as textQuery
@@ -78,7 +78,7 @@ class Store:
                 image_object = ImageObject(image[1], file_path[0], dist)
                 image_objects.append(image_object)
 
-        return image_objects
+        return ImageObjects(image_objects)
     
     def _text_to_text_search(self, q: str, k:int) :
         temp_texts, distances = self.__text_pipeline.similarity_search(q, k)
@@ -159,22 +159,22 @@ class Store:
         pass
 
     
-    def search(self, q: str, k: int, modals=['text']) :
+    def search(self, query: str, k: int, modals=['text']) :
 
         s = StoreObject()
 
         if 'image' in modals :
-            image_objects = self._text_to_image_search(q, k)
+            image_objects = self._text_to_image_search(query, k)
             # print(image_objects)
             s.images = image_objects
         
         if 'text' in modals :
-            text_objects = self._text_to_text_search(q, k)
+            text_objects = self._text_to_text_search(query, k)
 
             s.texts = text_objects
 
         if 'audio' in modals :
-            audio_objects = self._text_to_audio_search(q, k)
+            audio_objects = self._text_to_audio_search(query, k)
             s.audios = audio_objects
             
         
@@ -271,6 +271,9 @@ class Store:
             return self.__insert_local(path)
 
 
+    def remove(self, uuid: str) :
+        
+        pass
 
     
     def get(self, uuid: str):

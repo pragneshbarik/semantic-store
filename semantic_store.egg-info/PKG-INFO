@@ -1,3 +1,12 @@
+Metadata-Version: 2.1
+Name: semantic-store
+Version: 0.0.8
+Summary: An in-memory vector store for semantic data storage and retrieval
+Author: Pragnesh Barik
+Keywords: in-memory,vector,database,semantic,search
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # SemanticStore
 
 <p align="center">
@@ -22,7 +31,7 @@
 
 A simple easy to use vector store for small hobby projects.
 
-A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, Semantic has you covered.
+A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, SemanticStore has you covered.
 
 ## Features
 
@@ -33,17 +42,16 @@ A  versatile vector store designed for multimodal search. This store seamlessly 
 
 ## Getting Started
 
-Follow these steps to get started with the Multimodal Vector Store:
+Follow these steps to get started with the SemanticStore:
 
-1. **Clone the Repository**
+1. **Install into environment**
 
+   ```python
+   pip install semantic-store
+2. **Install requirements**
+   > Will try to package CLIP in next release version
    ```shell
-   git clone https://github.com/pragneshbarik/semantic-store.git
-
-2. **Install requirements.txt**
-   ```shell
-   pip install -r requirements.txt
-
+   pip install git+https://github.com/openai/CLIP.git
 3. **Get started in python**
 
    ```python

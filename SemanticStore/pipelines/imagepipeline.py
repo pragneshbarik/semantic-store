@@ -1,8 +1,7 @@
 
 import torch
 import numpy as np
-import sqlite3
-from pipelines.BasePipeline import Pipeline
+from SemanticStore.pipelines.basepipeline import Pipeline
 from sentence_transformers import SentenceTransformer
 import faiss
 import os
@@ -10,8 +9,8 @@ import torch
 import clip
 from PIL import Image
 import uuid
-from utils import *
-from models import Base, MasterFileRecord, DeletedIds, ImageRecord
+from SemanticStore.utils import *
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text
@@ -105,7 +104,6 @@ class ImagePipeline :
                 with self.__db_connection.connect() as connection:
                     result = connection.execute(raw_sql).fetchall()
             
-                print(result)
                 sorted_records = order_by(result, I)
 
                 return sorted_records, D
@@ -118,7 +116,6 @@ class ImagePipeline :
         query_embedding = self.encode_text(q)
         D, I = self.index.search(np.array(query_embedding).reshape(-1, 512), k)
         D, I = remove_neg_indexes(D, I)
-        print(D, I)
 
         if len(I) > 0:
             raw_sql = text(f'''
@@ -130,7 +127,6 @@ class ImagePipeline :
             with self.__db_connection.connect() as connection:
                 result = connection.execute(raw_sql).fetchall()
             
-            print(result)
             sorted_records = order_by(result, I)
 
             return sorted_records, D
