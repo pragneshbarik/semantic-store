@@ -1,6 +1,6 @@
 
-from semanticstore.pipelines.basepipeline import Pipeline
-import semanticstore.pipelines.textpipeline as textpipeline
+from SemanticStore.pipelines.basepipeline import Pipeline
+import SemanticStore.pipelines.textpipeline as textpipeline
 import whisper
 import torch
 import numpy as np
@@ -8,9 +8,9 @@ import sqlite3
 from sentence_transformers import SentenceTransformer
 import faiss
 import torch
-from semanticstore.utils import *
+from SemanticStore.utils import *
 import uuid
-from semanticstore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord, AudioRecord
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord, AudioRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text

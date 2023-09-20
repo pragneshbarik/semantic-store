@@ -1,14 +1,17 @@
 
-from semanticstore.pipelines.basepipeline import Pipeline
+import re
+from SemanticStore.pipelines.basepipeline import Pipeline
 import torch
 import numpy as np
+import sqlite3
 from sentence_transformers import SentenceTransformer
 import faiss
 import torch
+import clip
 import uuid
-from semanticstore.utils import *
+from SemanticStore.utils import *
 from PIL import Image
-from semanticstore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord, TextRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text

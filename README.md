@@ -16,25 +16,17 @@
    
 </p>
 
-> LIBRARY IS HIGHLY EXPERIMENTAL.
+> LIBRARY IS HIGHLY EXPERIMENTAL, KV MIGHT BE WORKING FINE
+> 
 
 ![Twitter header - 1 (2)](https://github.com/pragneshbarik/semantic-store/assets/65221256/3c47be22-28e0-4ece-80de-e8a7bfa111bf)
 
 
 
-A simple easy to use vector store for small hobby projects, might be the simplest vector database on github
-
-A  versatile vector store designed for multimodal search. This store seamlessly integrates with Faiss to provide efficient similarity search capabilities. Whether you're working with image, text, or audio data, SemanticStore has you covered.
+# What is SemanticStore
 
 
-
-
-## Features
-
-- **Multimodal Support**: Handle a wide range of data types, including image, text, and audio vectors.
-- **Faiss Integration**: Utilize the speed and efficiency of Faiss for similarity search.
-- **Custom Pipelines**: Customizable pipelines for processing and indexing your data.
-
+![Alt text](image-2.png)
 
 ## Getting Started
 
@@ -50,10 +42,137 @@ pip install semantic-store
 ```shell
 pip install git+https://github.com/openai/CLIP.git
 ```
+
+# Overview of KV
+
+A simple Key Value vector database, built around faiss and SQLite, provides a pythonic interface for insertion, deletion, udating and deleting. It comes bundled with SemanticStore but if you want to install it as a standalone package then install it using this command,
+```shell
+pip install semantic-store-kv
+```
+ only requires numpy and faiss as additional requirements.
+
+## Getting Started with KV
+
+1. **CRUD Operations**
+
+KV provides a similar interface to that of a python dictionary.  
+```python
+from semanticstore import KV
+
+# IF PRESENT LOAD DB, ELSE CREATE NEW
+kv = KV('path/of/data_base', n_dim = 2)
+
+# CREATE
+kv['foo'] = {'vector':[1.0, 3.4], 'metadata' : {'title' : 'hero'}}
+kv['star'] = {'vector': [1.0, 1.0],'metadata': 'angel'}
+kv[2] = {'vector': [3.0, 5.0],'metadata': [1, 2, 5]}
+
+# READ
+print(kv['foo'])
+>> {'vector':[1.0, 3.4], 'metadata' : {'title' : 'hero'}}
+
+# UPDATE
+kv['foo'] = {'vector':[-1.0, -3.4], 'metadata' : {'subtitle' : 'villian'}}
+
+# DELETE
+kv.remove('foo')
+
+# FIND
+kv.find('bar')
+>> False
+
+# COMMIT
+kv.commit() # Flush changes to disk
+
+# CLOSE
+kv.close() # Unlocks and frees the database 
+```
+
+2. **Vector Operations**
+   
+   KV provides these following vector operations
+   
+   **1. Nearest neighbor search:** Nearest neighbor search in a vector database is a specialized problem that deals with finding the nearest neighbors to a given query vector within a large database of vectors. 
+
+<center> <img src = 'image-4.png' /> 
+</center>
+
+```python
+# kv[query_vector][top_k]
+kv[[1.0, 2.1]][2]
+
+# Returns results in sorted according to distance
+>> [{'key': 'star',
+  'value': {'vector': [1.0, 1.0], 'metadata': 'angel'},
+  'distance': 1.2099998},
+ {'key': 'foo',
+  'value': {'vector': [1.0, 3.4], 'metadata': {'title': 'hero'}},
+  'distance': 1.6900005}]
+```
+Also supports slicing, might come handy sometimes. 
+```python 
+# kv[query_vector][offset : top_k]
+kv[[1.0, 3.1]][1:2]
+
+>> [{'key': 'star',
+  'value': {'vector': [1.0, 1.0], 'metadata': 'angel'},
+  'distance': 4.4099994}]
+```
+
+**2. Range Search:** Range search is a data retrieval or querying technique used in databases and data structures to find all data points or items that fall within a specified range or region in a multidimensional space. 
+
+> Can be used in RAG and HyDE for limiting respnose of a LLM between two contexts.
+
+
+![Alt text](image-6.png)
+```python
+# CASE 1 : kv[query_vector : radius]
+kv[[1.0, 2.1] : 5.0]
+
+#  Results are not sorted
+>> [{'key': 'foo',
+  'value': {'vector': [1.0, 3.4], 'metadata': {'title': 'hero'}},
+  'distance': 1.6900005},
+  {'key': 'star',
+  'value': {'vector': [1.0, 1.0], 'metadata': 'angel'},
+  'distance': 1.2099998},
+  {'key': '2',
+  'value': {'vector': [3.0, 5.0], 'metadata': [1, 2, 5]},
+  'distance': 12.410001}]
+```
+
+```python
+# CASE 2 : kv[initial_vector : final_vector]
+kv[[1.0, 2.1] : [3, 5]]
+
+#  Results are not sorted
+>> [{'key': 'foo',
+  'value': {'vector': [1.0, 3.4], 'metadata': {'title': 'hero'}},
+  'distance': 1.6900005},
+  {'key': 'star',
+  'value': {'vector': [1.0, 1.0], 'metadata': 'angel'},
+  'distance': 1.2099998}]
+```
+
+# Overview of Store
+
+
+## Features
+
+- **Multimodal Support**: Handle a wide range of data types, including image, text, and audio vectors.
+- **Faiss Integration**: Utilize the speed and efficiency of Faiss for similarity search.
+- **Custom Pipelines**: Customizable pipelines for processing and indexing your data.
+
+
+## Getting Started
+
+Follow these steps to get started with the SemanticStore:
+
+\
 3. **Get started in python**
 
 ```python
-from SemanticStore import Store
+from semanticstore import Store
 
 store = Store()
 store.connect('semantic.db')
@@ -70,7 +189,7 @@ print(res)
 A flask server that serves semantic search results. 
 ```python
 from flask import Flask, request, jsonify
-from SemanticStore import Store
+from semanticstore import Store
 store = Store()
 store.connect('semantic.db')
 
@@ -101,7 +220,7 @@ def recommend(query) :
    
 ```python
 # A simple RAG agent.
-from SemanticStore import Store
+from semanticstore import Store
 store = Store()
 store.connect('semantic.db')
 
@@ -137,7 +256,7 @@ while query!="QUIT" :
 
 ```python
 from flask import Flask, request, jsonify
-from SemanticStore import Store
+from semanticstore import Store
 store = Store()
 store.connect('semantic.db')
 

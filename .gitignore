@@ -6,3 +6,5 @@
 *.mp4
 *.mp3
 *.env
+deploy.py
+*.ipynb
