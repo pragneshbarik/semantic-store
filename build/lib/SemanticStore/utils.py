@@ -1,4 +1,5 @@
 import re
+import nltk
 import numpy as np
 from PyPDF2 import PdfReader
 from faster_whisper import WhisperModel

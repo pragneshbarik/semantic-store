@@ -1,1 +1,2 @@
-from SemanticStore.driver import *
+from semanticstore.store import *
+from semanticstore.kv import *

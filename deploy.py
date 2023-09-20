@@ -1,0 +1,3 @@
+import os
+os.system('python setup.py sdist bdist_wheel')
+os.system('twine upload --username __token__ --password pypi-AgEIcHlwaS5vcmcCJDEzMDE5NjRkLTgxZDQtNGMwZC04Mjk3LTVkNTVhODQwN2NhOAACKlszLCIxOWUxYTc5Ny01OTU0LTQ5YzktYTk2Ni05YmFmYTU2ZjVlNjQiXQAABiApGerEWb6_6Txe3JCnrzq6gPSI7NiDcpYrGQ2cQYg7jw dist/*')

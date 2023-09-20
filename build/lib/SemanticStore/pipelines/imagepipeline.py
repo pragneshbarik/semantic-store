@@ -1,7 +1,7 @@
 
 import torch
 import numpy as np
-from semanticstore.pipelines.basepipeline import Pipeline
+from SemanticStore.pipelines.basepipeline import Pipeline
 from sentence_transformers import SentenceTransformer
 import faiss
 import os
@@ -9,8 +9,8 @@ import torch
 import clip
 from PIL import Image
 import uuid
-from semanticstore.utils import *
-from semanticstore.models import Base, MasterFileRecord, DeletedIds, ImageRecord
+from SemanticStore.utils import *
+from SemanticStore.models import Base, MasterFileRecord, DeletedIds, ImageRecord
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import text
