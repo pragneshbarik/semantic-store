@@ -89,10 +89,10 @@ kv.close() # Unlocks and frees the database
 ```
 
 2. **Vector Operations**
-   
-   KV provides these following vector operations
-   
-   **1. Nearest neighbor search:** Nearest neighbor search in a vector database is a specialized problem that deals with finding the nearest neighbors to a given query vector within a large database of vectors. 
+
+KV provides these following vector operations
+
+**1. Nearest neighbor search:** Nearest neighbor search in a vector database is a specialized problem that deals with finding the nearest neighbors to a given query vector within a large database of vectors. 
 
 <center> <img src = 'image-4.png' /> 
 </center>
@@ -168,8 +168,8 @@ kv[[1.0, 2.1] : [3, 5]]
 
 Follow these steps to get started with the SemanticStore:
 
-\
-3. **Get started in python**
+
+1. **Get started in python**
 
 ```python
 from semanticstore import Store
