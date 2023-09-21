@@ -26,7 +26,7 @@
 # What is SemanticStore
 
 
-![Alt text](image-2.png)
+![Alt text](assets/image-2.png)
 
 ## Getting Started
 
@@ -45,7 +45,7 @@ pip install git+https://github.com/openai/CLIP.git
 
 # Overview of KV
 
-A simple Key Value vector database, built around faiss and SQLite, provides a pythonic interface for insertion, deletion, udating and deleting. It comes bundled with SemanticStore but if you want to install it as a standalone package then install it using this command,
+A simple Key Value Vector database, built around faiss and SQLite, provides a pythonic interface for insertion, deletion, udating and deleting. It comes bundled with SemanticStore but if you want to install it as a standalone package then install it using this command,
 ```shell
 pip install semantic-store-kv
 ```
@@ -94,7 +94,7 @@ KV provides these following vector operations
 
 **1. Nearest neighbor search:** Nearest neighbor search in a vector database is a specialized problem that deals with finding the nearest neighbors to a given query vector within a large database of vectors. 
 
-<center> <img src = 'image-4.png' /> 
+<center> <img src = 'assets/image-4.png' /> 
 </center>
 
 ```python
@@ -121,10 +121,10 @@ kv[[1.0, 3.1]][1:2]
 
 **2. Range Search:** Range search is a data retrieval or querying technique used in databases and data structures to find all data points or items that fall within a specified range or region in a multidimensional space. 
 
-> Can be used in RAG and HyDE for limiting respnose of a LLM between two contexts.
+> Can be used in RAG and HyDE for limiting response of a LLM between two contexts.
 
 
-![Alt text](image-6.png)
+![Alt text](assets/image-6.png)
 ```python
 # CASE 1 : kv[query_vector : radius]
 kv[[1.0, 2.1] : 5.0]

@@ -96,7 +96,7 @@ def split_text(text, chunk_size=256):
     current_chunk = []
     max_tokens_per_chunk = chunk_size
     for token in tokens:
-        if len(current_chunk) + len(nltk.word_tokenize(token)) <= max_tokens_per_chunk:
+        if len(current_chunk) + len(token) <= max_tokens_per_chunk:
             current_chunk.append(token)
         else:
             chunks.append(current_chunk)
