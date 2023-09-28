@@ -57,6 +57,7 @@ cover/
 *.db
 *.faiss
 *.bloom
+deploy.py
 
 *.db-journal
 # Django stuff:

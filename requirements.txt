@@ -1,0 +1,4 @@
+faiss-cpu==1.7.4
+bitarray==2.8.1
+mmh3==4.0.1
+numpy==1.26.0
