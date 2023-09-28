@@ -49,7 +49,7 @@ KV provides a similar interface to that of a python dictionary.
 from semanticstore import KV
 
 # IF PRESENT LOAD DB, ELSE CREATE NEW
-kv = KV('path/of/data_base', n_dim = 2)
+kv = KV('path/of/data_base', num_dimensions = 2)
 ```
 ```py
 # CREATE
