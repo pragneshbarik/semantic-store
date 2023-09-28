@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="semantic-store",
-    version="0.0.13",
+    version="0.0.14",
     description="An embedded vector database for semantic data storage and retrieval",
     author="Pragnesh Barik",
     packages=find_packages(),
