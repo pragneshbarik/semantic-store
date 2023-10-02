@@ -1,5 +1,5 @@
 import unittest
-from semanticstore import KV
+from semanticstore.kv import KV
 
 class TestYourKeyValueStore(unittest.TestCase):
 
