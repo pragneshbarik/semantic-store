@@ -51,8 +51,9 @@ class KV:
                 self.__index = faiss.IndexFlatL2(self.__num_dimensions) 
                 faiss.write_index(self.__index, self.__index_file)
 
-    def close(self):
-        self.__save_index()
+    def close(self, save = True):
+        if save :
+            self.commit()
         self.__db.close()
 
     def __get_item_by_faiss_ids(self, faiss_ids, distances) :
@@ -150,8 +151,7 @@ class KV:
                 with self._mutex:
                     faiss_id = self.__index.ntotal
                     cursor.execute('INSERT OR REPLACE INTO kv_store (key, faiss_id, value) VALUES (?, ?, ?)', (key, faiss_id, data_json))
-                    if self.__index is not None:
-                        self.__index.add(vector.reshape(1, -1))
+                    self.__index.add(vector.reshape(1, -1))
             else:
                 raise ValueError("Value must have a valid 'vector' field that is a list or NumPy array.")
         else:
@@ -212,10 +212,8 @@ class KV:
         """
         Only try to insert unique keys, will fail if finds already present keys.
         """
-        pass
+        raise NotImplementedError("Implementation Left")
 
-
-        
 
     def get(self, key) :
         return self[key]
