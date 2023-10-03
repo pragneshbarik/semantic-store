@@ -37,7 +37,6 @@ pip install semantic-store
 ```
 # Overview of KV
 
-A no non-sense Key-Value Vector database, built around faiss, provides a pythonic interface for insertion, deletion, updation and deletion. Only requires numpy and faiss as additional requirements.
 
 ## Getting Started with KV
 
