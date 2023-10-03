@@ -167,11 +167,11 @@ kv[[1.0, 2.1] : [3, 5]]
   'value': {'vector': [1.0, 1.0], 'payload': 'angel'},
   'distance': 1.2099998}]
 
-kv[[1.0, 2.1] : [3, 5]].filter('[].payload.title')
+kv[[1.0, 2.1] : [3, 5]].filter('[1].value.payload.title')
 >> 'hero'
 ```
 
-You can chain multiple jmespath filters for granular control.
+You can chain multiple jmespath filters for granular filtering.
 
 ```py
 kv.search(query, top_k).filter('<filter1>')
