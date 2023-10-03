@@ -10,8 +10,9 @@
     <a href="https://github.com/pragneshbarik/semantic-store/txtai/issues">
         <img src="https://img.shields.io/github/issues/pragneshbarik/semantic-store.svg?style=flat&color=success" alt="GitHub issues"/>
     </a>
-        <img src="https://img.shields.io/badge/discord-join-blue?style=flat&logo=discord&logocolor=white" alt="Join Slack"/>
-
+   <a href="https://discord.gg/QJSMeS2Rr">
+        <img src="https://img.shields.io/badge/discord-join-blue?style=flat&logo=discord&logocolor=white" alt="Join Discord"/>
+   </a>
     
    
 </p>
