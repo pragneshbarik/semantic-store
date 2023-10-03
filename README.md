@@ -167,7 +167,7 @@ kv[[1.0, 2.1] : [3, 5]]
   'value': {'vector': [1.0, 1.0], 'payload': 'angel'},
   'distance': 1.2099998}]
 
-kv[[1.0, 2.1] : [3, 5]].filter('[1].value.payload.title')
+kv[[1.0, 2.1] : [3, 5]].filter('[].value.payload.title')
 >> 'hero'
 ```
 
