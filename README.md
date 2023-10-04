@@ -24,7 +24,7 @@
 
 
 # What is SemanticStore
-A no non-sense Key-Value Vector database, built around faiss, provides a pythonic interface for insertion, deletion, updation and deletion.
+A no non-sense Key-Value Vector database, built around faiss, provides a pythonic interface for insertion, updation and deletion.
 
 
 ## Getting Started
